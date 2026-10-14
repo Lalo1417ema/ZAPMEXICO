@@ -1,0 +1,46 @@
+{
+  "project_info": {
+    "project_number": "814376171285",
+    "project_id": "zap2026-382a1",
+    "storage_bucket": "zap2026-382a1.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:814376171285:android:a287bc1c9f2c954be1db1c",
+        "android_client_info": {
+          "package_name": "mx.tecnm.cdhidalgo.zap_mexico"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "814376171285-tb4qsmvnqcorb11n3uirro0t4buk2jb7.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyArFbIL5bIu4I3Pzz7fiNY4Bmw3lyWDVkQ"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "814376171285-tb4qsmvnqcorb11n3uirro0t4buk2jb7.apps.googleusercontent.com",
+              "client_type": 3
+            },
+            {
+              "client_id": "814376171285-35j8cl3pa0fta7u3cm0e26g3vgdpgmoi.apps.googleusercontent.com",
+              "client_type": 2,
+              "ios_info": {
+                "bundle_id": "com.example.zapMexico"
+              }
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

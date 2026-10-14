@@ -1,0 +1,48 @@
+Illustrative category images
+============================
+
+These photos are generic category illustrations, not photos of the listed
+businesses. They are bundled locally so cards work offline. Licenses below
+apply to the original images; all CC BY and CC BY-SA images are unmodified.
+
+mecanica.jpg
+"Car mechanic working on an old engine under hood" by Ivan Radic
+CC BY 2.0: https://creativecommons.org/licenses/by/2.0/
+Source: https://www.flickr.com/photos/26344495@N05/33864245788
+
+salud.jpg
+"CVS Storefront Black Friday" by holidaygiftnation1
+CC BY 2.0: https://creativecommons.org/licenses/by/2.0/
+Source: https://www.flickr.com/photos/106513197@N08/10461931115
+
+restaurantes.jpg
+"Brunch" by Librarian Avenger
+CC BY 2.0: https://creativecommons.org/licenses/by/2.0/
+Source: https://www.flickr.com/photos/32112542@N00/500570946
+
+hoteles.jpg
+"Hotel room stock photo" by espensorvik
+CC BY 2.0: https://creativecommons.org/licenses/by/2.0/
+Source: https://www.flickr.com/photos/28478778@N05/4568472779
+
+ferreteria.jpg
+"Man organizing shelves while selecting wooden planks in a hardware store"
+by nenad53
+CC BY 2.0: https://creativecommons.org/licenses/by/2.0/
+Source: https://www.flickr.com/photos/202780880@N02/54560052467
+
+transporte.webp
+"Red city bus, public transportation"
+CC0 1.0: https://creativecommons.org/publicdomain/zero/1.0/
+Source: https://www.rawpixel.com/image/8809220/photo-image-person-public-domain-red
+
+tecnologia.jpg
+"New phone" by AMagill
+CC BY 2.0: https://creativecommons.org/licenses/by/2.0/
+Source: https://www.flickr.com/photos/85473033@N00/190570314
+
+otro.jpg
+"Cameron's 24 Hour Store, Elmwood Village, Buffalo, June 2020" by Western
+New York Architecture Deep Cuts
+CC BY-SA 2.0: https://creativecommons.org/licenses/by-sa/2.0/
+Source: https://www.flickr.com/photos/198134987@N03/53057809440

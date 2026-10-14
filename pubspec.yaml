@@ -1,0 +1,36 @@
+name: zap_mexico
+description: Directorio inteligente de negocios locales
+
+publish_to: "none"
+
+version: 1.0.0+1
+
+environment:
+  sdk: '>=3.11.5 <4.0.0'
+
+dependencies:
+  flutter:
+    sdk: flutter
+    # Dependencia obligatoria de Firebase
+  firebase_core: ^3.0.0
+  firebase_auth: ^5.0.0      # Para manejar la autenticación
+  google_sign_in: ^6.2.1    # Para el flujo de Google Sign-In
+
+  provider: ^6.1.2
+
+  image_picker: ^1.1.2
+
+  flutter_rating_bar: ^4.0.1
+
+  url_launcher: ^6.3.0
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+
+  flutter_lints: ^6.0.0
+
+flutter:
+  uses-material-design: true
+  assets:
+    - assets/images/business_categories/
