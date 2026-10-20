@@ -1,0 +1,55 @@
+rules_version = '2';
+
+service firebase.storage {
+  match /b/{bucket}/o {
+    function isAdmin() {
+      return request.auth != null
+        && firestore.exists(
+          /databases/(default)/documents/admins/$(request.auth.uid)
+        );
+    }
+
+    function businessData(businessId) {
+      return firestore.get(
+        /databases/(default)/documents/businesses/$(businessId)
+      ).data;
+    }
+
+    function userIsActive() {
+      return request.auth == null
+        || !firestore.exists(
+          /databases/(default)/documents/users/$(request.auth.uid)
+        )
+        || firestore.get(
+          /databases/(default)/documents/users/$(request.auth.uid)
+        ).data.get('blocked', false) != true;
+    }
+
+    function isApprovedBusiness(businessId) {
+      return businessData(businessId).status == 'approved'
+        && businessData(businessId).get('blocked', false) != true;
+    }
+
+    match /businesses/{businessId}/{fileName} {
+      allow read: if isAdmin()
+        || (userIsActive() && isApprovedBusiness(businessId))
+        || (userIsActive()
+          && request.auth != null
+          && businessData(businessId).createdBy == request.auth.uid);
+      allow write: if userIsActive()
+        && request.auth != null
+        && request.resource.size < 10 * 1024 * 1024
+        && request.resource.contentType.matches('image/.*')
+        && (isAdmin()
+          || (businessData(businessId).createdBy == request.auth.uid
+            && businessData(businessId).status == 'pending'));
+    }
+
+    match /events/{municipality}/{eventFile} {
+      allow read: if userIsActive();
+      allow write: if isAdmin()
+        && request.resource.size < 10 * 1024 * 1024
+        && request.resource.contentType.matches('image/.*');
+    }
+  }
+}

@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'package:firebase_core/firebase_core.dart';
 
 import '../../providers/business_provider.dart';
 import '../../providers/auth_provider.dart';
@@ -7,6 +8,10 @@ import '../../widgets/custom_drawer.dart';
 
 import '../../../config/routes/app_routes.dart';
 import '../../providers/admin_provider.dart';
+import '../../providers/catalog_provider.dart';
+import 'admin_blocking_screen.dart';
+import 'admin_events_screen.dart';
+import 'admin_catalog_screen.dart';
 
 class AdminDashboardScreen extends StatefulWidget {
   const AdminDashboardScreen({super.key});
@@ -16,25 +21,73 @@ class AdminDashboardScreen extends StatefulWidget {
 }
 
 class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
+  bool _isLoggingOut = false;
+  final _approvedSearchController = TextEditingController();
+  final _rejectedSearchController = TextEditingController();
+  String? _approvedCategory;
+  String? _approvedCity;
+  String? _rejectedCategory;
+  String? _rejectedCity;
+
+  @override
+  void dispose() {
+    _approvedSearchController.dispose();
+    _rejectedSearchController.dispose();
+    super.dispose();
+  }
+
   @override
   void initState() {
     super.initState();
 
-    // Carga el contenido local disponible para el panel de demostración.
     final provider = Provider.of<BusinessProvider>(context, listen: false);
-    final adminProvider = Provider.of<AdminProvider>(context, listen: false);
     Future.microtask(() async {
-      await provider.fetchPendingBusinesses();
-
-      await provider.fetchApprovedBusinesses();
-
-      await provider.fetchRejectedBusinesses();
-
-      await adminProvider.loadStatistics();
+      await _loadAdminData(provider);
     });
   }
 
-  // PASO 8 — Tarjeta reutilizable y adaptativa según el estado del negocio
+  Future<void> _loadAdminData(BusinessProvider provider) async {
+    final catalogProvider = Provider.of<CatalogProvider>(
+      context,
+      listen: false,
+    );
+    final adminProvider = Provider.of<AdminProvider>(context, listen: false);
+    try {
+      await provider.fetchAllBusinessesForAdmin();
+      if (!mounted) return;
+      await catalogProvider.loadCatalogs();
+      if (!mounted) return;
+      await adminProvider.loadStatistics(provider);
+    } on FirebaseException catch (error) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            error.message ?? 'No se pudieron cargar los datos del panel.',
+          ),
+        ),
+      );
+    }
+  }
+
+  Future<void> _logout() async {
+    if (_isLoggingOut) return;
+    setState(() => _isLoggingOut = true);
+    final navigator = Navigator.of(context);
+    try {
+      await Provider.of<AuthProvider>(context, listen: false).logout();
+      if (!mounted) return;
+      navigator.pushNamedAndRemoveUntil(AppRoutes.login, (_) => false);
+    } on FirebaseException catch (error) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(error.message ?? 'No se pudo cerrar sesión.')),
+      );
+    } finally {
+      if (mounted) setState(() => _isLoggingOut = false);
+    }
+  }
+
   Widget buildBusinessCard(
     Map<String, dynamic> business,
     BusinessProvider provider,
@@ -44,6 +97,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
     return Card(
       margin: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
       child: ListTile(
+        leading: _businessLogo(business),
         title: Text(
           business['name'] ?? '',
           style: const TextStyle(fontWeight: FontWeight.bold),
@@ -78,7 +132,6 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
         trailing: Row(
           mainAxisSize: MainAxisSize.min,
           children: [
-            // Botón Ver Detalle incorporado nativamente en la acción
             IconButton(
               icon: const Icon(Icons.visibility_rounded, color: Colors.blue),
               onPressed: () {
@@ -89,17 +142,38 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
                 );
               },
             ),
-            // Acciones de aprobación/rechazo condicionales (Solo si está pendiente)
+            IconButton(
+              tooltip: 'Editar negocio',
+              icon: const Icon(Icons.edit, color: Colors.amber),
+              onPressed: () {
+                Navigator.pushNamed(
+                  context,
+                  AppRoutes.editBusiness,
+                  arguments: business,
+                );
+              },
+            ),
             if (status == 'pending') ...[
               IconButton(
                 onPressed: () async {
                   try {
                     await provider.approveBusiness(business['id']);
+                  } on FirebaseException catch (error) {
+                    if (!mounted) return;
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(
+                        content: Text(
+                          error.message ?? 'No se pudo aprobar el negocio.',
+                        ),
+                      ),
+                    );
                   } on StateError catch (error) {
                     if (!mounted) return;
                     ScaffoldMessenger.of(
                       context,
                     ).showSnackBar(SnackBar(content: Text(error.message)));
+                  } finally {
+                    if (mounted) await _loadAdminData(provider);
                   }
                 },
                 icon: const Icon(Icons.check_circle, color: Colors.green),
@@ -134,8 +208,26 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
                   );
 
                   if (comment != null && comment.isNotEmpty) {
-                    await provider.rejectBusiness(business['id'], comment);
+                    try {
+                      await provider.rejectBusiness(business['id'], comment);
+                      await _loadAdminData(provider);
+                    } on FirebaseException catch (error) {
+                      if (!mounted) return;
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        SnackBar(
+                          content: Text(
+                            error.message ?? 'No se pudo rechazar el negocio.',
+                          ),
+                        ),
+                      );
+                    } on ArgumentError catch (error) {
+                      if (!mounted) return;
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        SnackBar(content: Text(error.message.toString())),
+                      );
+                    }
                   }
+                  controller.dispose();
                 },
                 icon: const Icon(Icons.cancel, color: Colors.red),
               ),
@@ -146,7 +238,26 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
     );
   }
 
-  // Métodos auxiliares para construir el cuerpo de cada pestaña (PASO 7)
+  Widget _businessLogo(Map<String, dynamic> business) {
+    final logoUrl = (business['logoUrl'] ?? '').toString();
+    final fallback = const CircleAvatar(child: Icon(Icons.store));
+    if (logoUrl.isEmpty) return fallback;
+
+    final image = logoUrl.startsWith('assets/')
+        ? Image.asset(logoUrl, width: 48, height: 48, fit: BoxFit.cover)
+        : Image.network(
+            logoUrl,
+            width: 48,
+            height: 48,
+            fit: BoxFit.cover,
+            errorBuilder: (_, _, _) => const Icon(Icons.store),
+          );
+    return ClipRRect(
+      borderRadius: BorderRadius.circular(24),
+      child: SizedBox(width: 48, height: 48, child: image),
+    );
+  }
+
   Widget buildPendingTab(BusinessProvider provider) {
     return provider.pendingBusinesses.isEmpty
         ? const Center(child: Text('No hay negocios pendientes'))
@@ -159,28 +270,173 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
   }
 
   Widget buildApprovedTab(BusinessProvider provider) {
-    return provider.businesses.isEmpty
-        ? const Center(child: Text('No hay negocios aprobados'))
-        : ListView.builder(
-            itemCount: provider.businesses.length,
-            key: const PageStorageKey('approved_tab'),
-            itemBuilder: (context, index) =>
-                buildBusinessCard(provider.businesses[index], provider),
-          );
+    return _buildFilteredTab(
+      businesses: provider.approvedBusinesses,
+      provider: provider,
+      searchController: _approvedSearchController,
+      selectedCategory: _approvedCategory,
+      selectedCity: _approvedCity,
+      onCategoryChanged: (value) => setState(() => _approvedCategory = value),
+      onCityChanged: (value) => setState(() => _approvedCity = value),
+      emptyMessage: 'No hay negocios aprobados',
+      noMatchesMessage: 'No hay aprobados que coincidan con la búsqueda.',
+      pageStorageKey: 'approved_tab',
+    );
   }
 
   Widget buildRejectedTab(BusinessProvider provider) {
-    return provider.rejectedBusinesses.isEmpty
-        ? const Center(child: Text('No hay negocios rechazados'))
-        : ListView.builder(
-            itemCount: provider.rejectedBusinesses.length,
-            itemBuilder: (context, index) {
-              return buildBusinessCard(
-                provider.rejectedBusinesses[index],
-                provider,
-              );
-            },
-          );
+    return _buildFilteredTab(
+      businesses: provider.rejectedBusinesses,
+      provider: provider,
+      searchController: _rejectedSearchController,
+      selectedCategory: _rejectedCategory,
+      selectedCity: _rejectedCity,
+      onCategoryChanged: (value) => setState(() => _rejectedCategory = value),
+      onCityChanged: (value) => setState(() => _rejectedCity = value),
+      emptyMessage: 'No hay negocios rechazados',
+      noMatchesMessage: 'No hay rechazados que coincidan con la búsqueda.',
+      pageStorageKey: 'rejected_tab',
+    );
+  }
+
+  Widget _buildFilteredTab({
+    required List<Map<String, dynamic>> businesses,
+    required BusinessProvider provider,
+    required TextEditingController searchController,
+    required String? selectedCategory,
+    required String? selectedCity,
+    required ValueChanged<String?> onCategoryChanged,
+    required ValueChanged<String?> onCityChanged,
+    required String emptyMessage,
+    required String noMatchesMessage,
+    required String pageStorageKey,
+  }) {
+    final catalogs = context.watch<CatalogProvider>();
+    final query = searchController.text.trim().toLowerCase();
+    final filteredBusinesses = businesses.where((business) {
+      final matchesSearch =
+          query.isEmpty ||
+          [
+            business['name'],
+            business['category'],
+            business['city'],
+            business['address'],
+            business['phone'],
+          ].any((value) => value.toString().toLowerCase().contains(query));
+      final matchesCategory =
+          selectedCategory == null || business['category'] == selectedCategory;
+      final matchesCity =
+          selectedCity == null || business['city'] == selectedCity;
+      return matchesSearch && matchesCategory && matchesCity;
+    }).toList();
+
+    if (businesses.isEmpty) {
+      return Center(child: Text(emptyMessage));
+    }
+
+    return Column(
+      children: [
+        Padding(
+          padding: const EdgeInsets.fromLTRB(14, 12, 14, 4),
+          child: TextField(
+            controller: searchController,
+            onChanged: (_) => setState(() {}),
+            decoration: InputDecoration(
+              hintText: 'Buscar por nombre, dirección, teléfono...',
+              prefixIcon: const Icon(Icons.search),
+              suffixIcon: query.isEmpty
+                  ? null
+                  : IconButton(
+                      tooltip: 'Limpiar búsqueda',
+                      onPressed: () {
+                        searchController.clear();
+                        setState(() {});
+                      },
+                      icon: const Icon(Icons.close),
+                    ),
+              border: const OutlineInputBorder(),
+              isDense: true,
+            ),
+          ),
+        ),
+        Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
+          child: Wrap(
+            spacing: 10,
+            runSpacing: 8,
+            children: [
+              SizedBox(
+                width: 155,
+                child: DropdownButtonFormField<String?>(
+                  initialValue: selectedCategory,
+                  isExpanded: true,
+                  decoration: const InputDecoration(
+                    labelText: 'Categoría',
+                    border: OutlineInputBorder(),
+                    isDense: true,
+                  ),
+                  items: [
+                    const DropdownMenuItem<String?>(
+                      value: null,
+                      child: Text('Todas'),
+                    ),
+                    ...catalogs.categories.map(
+                      (category) => DropdownMenuItem<String?>(
+                        value: category,
+                        child: Text(category, overflow: TextOverflow.ellipsis),
+                      ),
+                    ),
+                  ],
+                  onChanged: onCategoryChanged,
+                ),
+              ),
+              SizedBox(
+                width: 155,
+                child: DropdownButtonFormField<String?>(
+                  initialValue: selectedCity,
+                  isExpanded: true,
+                  decoration: const InputDecoration(
+                    labelText: 'Municipio',
+                    border: OutlineInputBorder(),
+                    isDense: true,
+                  ),
+                  items: [
+                    const DropdownMenuItem<String?>(
+                      value: null,
+                      child: Text('Todos'),
+                    ),
+                    ...catalogs.municipalities.map(
+                      (city) => DropdownMenuItem<String?>(
+                        value: city,
+                        child: Text(city, overflow: TextOverflow.ellipsis),
+                      ),
+                    ),
+                  ],
+                  onChanged: onCityChanged,
+                ),
+              ),
+            ],
+          ),
+        ),
+        Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+          child: Align(
+            alignment: Alignment.centerLeft,
+            child: Text('${filteredBusinesses.length} negocios'),
+          ),
+        ),
+        Expanded(
+          child: filteredBusinesses.isEmpty
+              ? Center(child: Text(noMatchesMessage))
+              : ListView.builder(
+                  key: PageStorageKey(pageStorageKey),
+                  itemCount: filteredBusinesses.length,
+                  itemBuilder: (context, index) =>
+                      buildBusinessCard(filteredBusinesses[index], provider),
+                ),
+        ),
+      ],
+    );
   }
 
   Widget buildStatisticsTab() {
@@ -284,14 +540,12 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
   Widget build(BuildContext context) {
     final businessProvider = Provider.of<BusinessProvider>(context);
 
-    // PASO 6 — Proveer el controlador de pestañas envolviendo el Scaffold
     return DefaultTabController(
-      length: 4,
+      length: 7,
       child: Scaffold(
         drawer: const CustomDrawer(),
         appBar: AppBar(
           title: const Text('Panel Administrador'),
-          // PASO 5 — Inyección del TabBar en la parte inferior del AppBar
           bottom: const TabBar(
             isScrollable: true,
             indicatorColor: Colors.white,
@@ -300,23 +554,39 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
               Tab(text: 'Aprobados'),
               Tab(text: 'Rechazados'),
               Tab(text: 'Estadísticas'),
+              Tab(text: 'Eventos'),
+              Tab(text: 'Bloqueos'),
+              Tab(text: 'Catálogos'),
             ],
           ),
           actions: [
             IconButton(
+              tooltip: 'Agregar negocio',
+              icon: const Icon(Icons.add_business),
               onPressed: () async {
-                await Provider.of<AuthProvider>(
+                final navigator = Navigator.of(context);
+                final provider = Provider.of<BusinessProvider>(
                   context,
                   listen: false,
-                ).logout();
-                if (!context.mounted) return;
-                Navigator.pushReplacementNamed(context, AppRoutes.login);
+                );
+                await navigator.pushNamed(AppRoutes.businessRequest);
+                if (!mounted) return;
+                await _loadAdminData(provider);
               },
-              icon: const Icon(Icons.logout),
+            ),
+            IconButton(
+              tooltip: 'Cerrar sesión',
+              onPressed: _isLoggingOut ? null : _logout,
+              icon: _isLoggingOut
+                  ? const SizedBox(
+                      width: 20,
+                      height: 20,
+                      child: CircularProgressIndicator(strokeWidth: 2),
+                    )
+                  : const Icon(Icons.logout),
             ),
           ],
         ),
-        // PASO 7 — Despliegue de las vistas asíncronas sincronizadas con el TabBar
         body: businessProvider.isLoading
             ? const Center(child: CircularProgressIndicator())
             : TabBarView(
@@ -328,6 +598,12 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
                   buildRejectedTab(businessProvider),
 
                   buildStatisticsTab(),
+
+                  const AdminEventsScreen(),
+
+                  const AdminBlockingScreen(),
+
+                  const AdminCatalogScreen(),
                 ],
               ),
       ),

@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'package:firebase_core/firebase_core.dart';
 
 import '../../config/routes/app_routes.dart';
 import '../../core/constants/app_colors.dart';
@@ -110,14 +111,24 @@ class CustomDrawer extends StatelessWidget {
               leading: const Icon(Icons.logout),
               title: const Text('Cerrar sesión'),
               onTap: () async {
-                await auth.logout();
-
-                if (!context.mounted) return;
-                Navigator.pushNamedAndRemoveUntil(
-                  context,
-                  AppRoutes.login,
-                  (route) => false,
-                );
+                try {
+                  await auth.logout();
+                  if (!context.mounted) return;
+                  Navigator.pushNamedAndRemoveUntil(
+                    context,
+                    AppRoutes.login,
+                    (route) => false,
+                  );
+                } on FirebaseException catch (error) {
+                  if (!context.mounted) return;
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(
+                      content: Text(
+                        error.message ?? 'No se pudo cerrar sesión.',
+                      ),
+                    ),
+                  );
+                }
               },
             ),
           ],

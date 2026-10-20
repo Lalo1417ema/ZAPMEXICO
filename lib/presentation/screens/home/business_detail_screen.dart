@@ -16,6 +16,8 @@ class BusinessDetailScreen extends StatefulWidget {
 }
 
 class _BusinessDetailScreenState extends State<BusinessDetailScreen> {
+  int _currentGalleryPage = 0;
+
   // --- HELPERS DE LANZAMIENTO URL ---
   Future<void> launchPhone(String phone) async {
     if (phone.isEmpty) return;
@@ -76,6 +78,12 @@ class _BusinessDetailScreenState extends State<BusinessDetailScreen> {
       );
     }
   }
+
+  Widget _galleryImageFallback() => Container(
+    width: double.infinity,
+    color: AppColors.surface,
+    child: const Icon(Icons.broken_image, color: AppColors.primary),
+  );
 
   @override
   Widget build(BuildContext context) {
@@ -306,7 +314,6 @@ class _BusinessDetailScreenState extends State<BusinessDetailScreen> {
                     ),
                   ),
 
-                  // 🖼️ SECCIÓN DE GALERÍA INTELIGENTE
                   const SizedBox(height: 30),
                   const Text(
                     'Galería',
@@ -330,47 +337,69 @@ class _BusinessDetailScreenState extends State<BusinessDetailScreen> {
                           ),
                         )
                       : SizedBox(
-                          height: 120,
-                          child: ListView.builder(
-                            scrollDirection: Axis.horizontal,
-                            itemCount: galleryBytes.length + gallery.length,
-                            itemBuilder: (context, index) {
-                              final image = index < galleryBytes.length
-                                  ? Image.memory(
-                                      galleryBytes[index],
-                                      width: 120,
-                                      fit: BoxFit.cover,
-                                      errorBuilder: (_, _, _) => Container(
-                                        width: 120,
-                                        color: AppColors.surface,
-                                        child: const Icon(
-                                          Icons.broken_image,
-                                          color: AppColors.primary,
-                                        ),
+                          height: 230,
+                          child: Column(
+                            children: [
+                              Expanded(
+                                child: PageView.builder(
+                                  itemCount:
+                                      galleryBytes.length + gallery.length,
+                                  onPageChanged: (index) {
+                                    setState(() => _currentGalleryPage = index);
+                                  },
+                                  itemBuilder: (context, index) {
+                                    final image = index < galleryBytes.length
+                                        ? Image.memory(
+                                            galleryBytes[index],
+                                            width: double.infinity,
+                                            fit: BoxFit.cover,
+                                            errorBuilder: (_, _, _) =>
+                                                _galleryImageFallback(),
+                                          )
+                                        : Image.network(
+                                            gallery[index - galleryBytes.length]
+                                                .toString(),
+                                            width: double.infinity,
+                                            fit: BoxFit.cover,
+                                            errorBuilder: (_, _, _) =>
+                                                _galleryImageFallback(),
+                                          );
+                                    return Padding(
+                                      padding: const EdgeInsets.symmetric(
+                                        horizontal: 4,
                                       ),
-                                    )
-                                  : Image.network(
-                                      gallery[index - galleryBytes.length]
-                                          .toString(),
-                                      width: 120,
-                                      fit: BoxFit.cover,
-                                      errorBuilder: (_, _, _) => Container(
-                                        width: 120,
-                                        color: AppColors.surface,
-                                        child: const Icon(
-                                          Icons.broken_image,
-                                          color: AppColors.primary,
-                                        ),
+                                      child: ClipRRect(
+                                        borderRadius: BorderRadius.circular(12),
+                                        child: image,
                                       ),
                                     );
-                              return Padding(
-                                padding: const EdgeInsets.only(right: 10),
-                                child: ClipRRect(
-                                  borderRadius: BorderRadius.circular(12),
-                                  child: image,
+                                  },
                                 ),
-                              );
-                            },
+                              ),
+                              const SizedBox(height: 10),
+                              Row(
+                                mainAxisAlignment: MainAxisAlignment.center,
+                                children: List.generate(
+                                  galleryBytes.length + gallery.length,
+                                  (index) => AnimatedContainer(
+                                    duration: const Duration(milliseconds: 180),
+                                    width: _currentGalleryPage == index
+                                        ? 18
+                                        : 7,
+                                    height: 7,
+                                    margin: const EdgeInsets.symmetric(
+                                      horizontal: 3,
+                                    ),
+                                    decoration: BoxDecoration(
+                                      color: _currentGalleryPage == index
+                                          ? AppColors.primary
+                                          : AppColors.greyText,
+                                      borderRadius: BorderRadius.circular(8),
+                                    ),
+                                  ),
+                                ),
+                              ),
+                            ],
                           ),
                         ),
 

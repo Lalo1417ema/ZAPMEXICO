@@ -1,11 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'dart:typed_data';
+import 'package:firebase_core/firebase_core.dart';
 
 import '../../../config/routes/app_routes.dart';
 import '../../../core/constants/app_colors.dart';
-import '../../../data/business_catalog.dart';
-import '../../../data/municipal_events.dart';
+import '../../providers/municipal_event_provider.dart';
+import '../../providers/catalog_provider.dart';
 import '../../widgets/custom_drawer.dart';
 import '../../providers/business_provider.dart';
 import '../../widgets/business_card.dart';
@@ -30,11 +31,47 @@ class _MunicipalityBusinessesScreenState
     extends State<MunicipalityBusinessesScreen> {
   final searchController = TextEditingController();
   String selectedCategory = 'Todos';
+  String? _loadedEventsMunicipality;
+  bool _catalogsReady = false;
 
   @override
   void initState() {
     super.initState();
     searchController.addListener(() => setState(() {}));
+    Future.microtask(_loadApprovedBusinesses);
+    Future.microtask(_loadCatalogs);
+  }
+
+  Future<void> _loadCatalogs() async {
+    try {
+      await context.read<CatalogProvider>().loadCatalogs();
+    } on FirebaseException catch (error) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            error.message ?? 'No se pudieron cargar los municipios.',
+          ),
+        ),
+      );
+    } finally {
+      if (mounted) setState(() => _catalogsReady = true);
+    }
+  }
+
+  Future<void> _loadApprovedBusinesses() async {
+    try {
+      await context.read<BusinessProvider>().fetchApprovedBusinesses();
+    } on FirebaseException catch (error) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            error.message ?? 'No se pudieron actualizar los negocios.',
+          ),
+        ),
+      );
+    }
   }
 
   @override
@@ -45,6 +82,10 @@ class _MunicipalityBusinessesScreenState
 
   @override
   Widget build(BuildContext context) {
+    final catalogs = context.watch<CatalogProvider>();
+    if (!_catalogsReady) {
+      return const Scaffold(body: Center(child: CircularProgressIndicator()));
+    }
     final arguments = ModalRoute.of(context)?.settings.arguments;
     final municipality =
         widget.municipality ??
@@ -56,13 +97,34 @@ class _MunicipalityBusinessesScreenState
         : arguments is Map
         ? (arguments['visitorName'] ?? '').toString()
         : '';
-    if (municipality == null || !regionMunicipalities.contains(municipality)) {
+    if (municipality == null ||
+        !catalogs.municipalities.contains(municipality)) {
       return Scaffold(
         appBar: AppBar(title: const Text('Municipio')),
         body: const Center(
           child: Text('No se seleccionó un municipio válido.'),
         ),
       );
+    }
+
+    if (_loadedEventsMunicipality != municipality) {
+      _loadedEventsMunicipality = municipality;
+      final eventProvider = context.read<MunicipalEventProvider>();
+      final messenger = ScaffoldMessenger.of(context);
+      Future.microtask(() async {
+        try {
+          await eventProvider.loadMunicipality(municipality);
+        } on FirebaseException catch (error) {
+          if (!mounted) return;
+          messenger.showSnackBar(
+            SnackBar(
+              content: Text(
+                error.message ?? 'No se pudieron cargar los eventos.',
+              ),
+            ),
+          );
+        }
+      });
     }
 
     final municipalBusinesses = context
@@ -144,7 +206,7 @@ class _MunicipalityBusinessesScreenState
               child: ListView(
                 padding: const EdgeInsets.symmetric(horizontal: 16),
                 scrollDirection: Axis.horizontal,
-                children: ['Todos', ...businessCategories].map((category) {
+                children: ['Todos', ...catalogs.categories].map((category) {
                   final isSelected = selectedCategory == category;
                   return Padding(
                     padding: const EdgeInsets.only(right: 8),
@@ -168,7 +230,9 @@ class _MunicipalityBusinessesScreenState
           SliverToBoxAdapter(
             child: MunicipalEventsCarousel(
               municipality: municipality,
-              events: municipalEvents[municipality] ?? const [],
+              events: context.watch<MunicipalEventProvider>().eventsFor(
+                municipality,
+              ),
             ),
           ),
           const SliverToBoxAdapter(child: SizedBox(height: 8)),
@@ -230,7 +294,10 @@ class _MunicipalityBusinessesScreenState
                 style: TextStyle(fontWeight: FontWeight.bold),
               ),
             ),
-            ...regionMunicipalities.map(
+            ...Provider.of<CatalogProvider>(
+              context,
+              listen: false,
+            ).municipalities.map(
               (municipality) => ListTile(
                 leading: const Icon(Icons.location_on),
                 title: Text(municipality),

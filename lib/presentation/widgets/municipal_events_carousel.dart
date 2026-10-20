@@ -6,18 +6,24 @@ import 'package:url_launcher/url_launcher.dart';
 import '../../core/constants/app_colors.dart';
 
 class MunicipalEvent {
+  final String? id;
   final String title;
   final String date;
   final String description;
   final IconData icon;
   final String? sourceUrl;
+  final String? imageUrl;
+  final bool isActive;
 
   const MunicipalEvent({
+    this.id,
     required this.title,
     required this.date,
     required this.description,
     required this.icon,
     this.sourceUrl,
+    this.imageUrl,
+    this.isActive = true,
   });
 }
 
@@ -182,75 +188,105 @@ class _EventCard extends StatelessWidget {
               ),
             ],
           ),
-          child: Row(
+          child: Stack(
+            fit: StackFit.expand,
             children: [
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    Text(
-                      event.date.toUpperCase(),
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: const TextStyle(
-                        color: Color(0xFFFFD7A8),
-                        fontSize: 11,
-                        fontWeight: FontWeight.w800,
-                        letterSpacing: 1,
+              if (event.imageUrl != null && event.imageUrl!.isNotEmpty)
+                ClipRRect(
+                  borderRadius: BorderRadius.circular(20),
+                  child: Image.network(
+                    event.imageUrl!,
+                    fit: BoxFit.cover,
+                    errorBuilder: (_, _, _) => const SizedBox.shrink(),
+                  ),
+                ),
+              DecoratedBox(
+                decoration: BoxDecoration(
+                  borderRadius: BorderRadius.circular(20),
+                  gradient: LinearGradient(
+                    colors: [
+                      Colors.black.withValues(alpha: 0.82),
+                      Colors.black.withValues(alpha: 0.2),
+                    ],
+                    begin: Alignment.centerLeft,
+                    end: Alignment.centerRight,
+                  ),
+                ),
+                child: Padding(
+                  padding: const EdgeInsets.all(18),
+                  child: Row(
+                    children: [
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            Text(
+                              event.date.toUpperCase(),
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              style: const TextStyle(
+                                color: Color(0xFFFFD7A8),
+                                fontSize: 11,
+                                fontWeight: FontWeight.w800,
+                                letterSpacing: 1,
+                              ),
+                            ),
+                            const SizedBox(height: 7),
+                            Text(
+                              event.title,
+                              maxLines: 2,
+                              overflow: TextOverflow.ellipsis,
+                              style: const TextStyle(
+                                fontSize: 19,
+                                height: 1.1,
+                                fontWeight: FontWeight.w900,
+                                color: Colors.white,
+                              ),
+                            ),
+                            const SizedBox(height: 6),
+                            Text(
+                              event.description,
+                              maxLines: 2,
+                              overflow: TextOverflow.ellipsis,
+                              style: const TextStyle(
+                                color: Colors.white70,
+                                fontSize: 12,
+                                height: 1.2,
+                              ),
+                            ),
+                            if (event.sourceUrl != null) ...[
+                              const SizedBox(height: 7),
+                              const Text(
+                                'CONSULTAR PROGRAMA OFICIAL  ↗',
+                                style: TextStyle(
+                                  color: Color(0xFFFFD7A8),
+                                  fontSize: 10,
+                                  fontWeight: FontWeight.w800,
+                                  letterSpacing: 0.4,
+                                ),
+                              ),
+                            ],
+                          ],
+                        ),
                       ),
-                    ),
-                    const SizedBox(height: 7),
-                    Text(
-                      event.title,
-                      maxLines: 2,
-                      overflow: TextOverflow.ellipsis,
-                      style: const TextStyle(
-                        fontSize: 19,
-                        height: 1.1,
-                        fontWeight: FontWeight.w900,
-                        color: Colors.white,
-                      ),
-                    ),
-                    const SizedBox(height: 6),
-                    Text(
-                      event.description,
-                      maxLines: 2,
-                      overflow: TextOverflow.ellipsis,
-                      style: const TextStyle(
-                        color: Colors.white70,
-                        fontSize: 12,
-                        height: 1.2,
-                      ),
-                    ),
-                    if (event.sourceUrl != null) ...[
-                      const SizedBox(height: 7),
-                      const Text(
-                        'CONSULTAR PROGRAMA OFICIAL  ↗',
-                        style: TextStyle(
-                          color: Color(0xFFFFD7A8),
-                          fontSize: 10,
-                          fontWeight: FontWeight.w800,
-                          letterSpacing: 0.4,
+                      const SizedBox(width: 8),
+                      Container(
+                        width: 62,
+                        height: 62,
+                        decoration: BoxDecoration(
+                          color: Colors.white.withValues(alpha: 0.12),
+                          shape: BoxShape.circle,
+                          border: Border.all(color: Colors.white24),
+                        ),
+                        child: Icon(
+                          event.icon,
+                          color: const Color(0xFFFFD7A8),
+                          size: 32,
                         ),
                       ),
                     ],
-                  ],
-                ),
-              ),
-              const SizedBox(width: 8),
-              Container(
-                width: 62,
-                height: 62,
-                decoration: BoxDecoration(
-                  color: Colors.white.withValues(alpha: 0.12),
-                  shape: BoxShape.circle,
-                  border: Border.all(color: Colors.white24),
-                ),
-                child: Icon(
-                  event.icon,
-                  color: const Color(0xFFFFD7A8),
-                  size: 32,
+                  ),
                 ),
               ),
             ],

@@ -3,6 +3,7 @@ import '../../../config/routes/app_routes.dart';
 import '../../widgets/custom_button.dart';
 import '../../widgets/custom_text_field.dart';
 
+import 'package:firebase_auth/firebase_auth.dart' hide AuthProvider;
 import 'package:provider/provider.dart';
 import '../../providers/auth_provider.dart';
 
@@ -21,6 +22,19 @@ class _RegisterScreenState extends State<RegisterScreen> {
   final confirmController = TextEditingController();
   final phoneController = TextEditingController();
   final cityController = TextEditingController();
+  bool isLoading = false;
+
+  @override
+  void dispose() {
+    nameController.dispose();
+    userController.dispose();
+    emailController.dispose();
+    passController.dispose();
+    confirmController.dispose();
+    phoneController.dispose();
+    cityController.dispose();
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -88,26 +102,68 @@ class _RegisterScreenState extends State<RegisterScreen> {
 
               CustomButton(
                 text: 'REGISTRARSE',
+                isLoading: isLoading,
                 onPressed: () async {
+                  if (nameController.text.trim().isEmpty ||
+                      emailController.text.trim().isEmpty ||
+                      passController.text.isEmpty ||
+                      cityController.text.trim().isEmpty) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(
+                        content: Text(
+                          'Completa nombre, correo, contraseña y ciudad.',
+                        ),
+                      ),
+                    );
+                    return;
+                  }
+                  if (passController.text != confirmController.text) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(
+                        content: Text('Las contraseñas no coinciden.'),
+                      ),
+                    );
+                    return;
+                  }
+                  setState(() => isLoading = true);
                   final auth = Provider.of<AuthProvider>(
                     context,
                     listen: false,
                   );
 
-                  final success = await auth.register(
-                    name: nameController.text.trim(),
-                    email: emailController.text.trim(),
-                    password: passController.text.trim(),
-                    phone: phoneController.text.trim(),
-                    city: cityController.text.trim(),
-                  );
-
-                  if (!context.mounted) return;
-                  if (success) {
+                  try {
+                    await auth.register(
+                      name: nameController.text.trim(),
+                      email: emailController.text.trim(),
+                      password: passController.text,
+                      phone: phoneController.text.trim(),
+                      city: cityController.text.trim(),
+                    );
+                    if (!context.mounted) return;
                     Navigator.pushReplacementNamed(
                       context,
                       AppRoutes.visitorSetup,
                     );
+                  } on FirebaseAuthException catch (error) {
+                    if (!context.mounted) return;
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(
+                        content: Text(
+                          error.message ?? 'No se pudo crear la cuenta.',
+                        ),
+                      ),
+                    );
+                  } on FirebaseException catch (error) {
+                    if (!context.mounted) return;
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(
+                        content: Text(
+                          error.message ?? 'No se pudo guardar el perfil.',
+                        ),
+                      ),
+                    );
+                  } finally {
+                    if (mounted) setState(() => isLoading = false);
                   }
                 },
               ),

@@ -1,10 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'package:firebase_core/firebase_core.dart';
 
 import '../../../config/routes/app_routes.dart';
 import '../../../core/constants/app_colors.dart';
-import '../../../data/business_catalog.dart';
 import '../../providers/auth_provider.dart';
+import '../../providers/catalog_provider.dart';
 import '../../widgets/custom_button.dart';
 import '../../widgets/custom_text_field.dart';
 
@@ -18,6 +19,27 @@ class VisitorSetupScreen extends StatefulWidget {
 class _VisitorSetupScreenState extends State<VisitorSetupScreen> {
   final nameController = TextEditingController();
   String? selectedMunicipality;
+  bool isLoading = false;
+
+  @override
+  void initState() {
+    super.initState();
+    final catalogs = context.read<CatalogProvider>();
+    Future.microtask(() async {
+      try {
+        await catalogs.loadCatalogs();
+      } on FirebaseException catch (error) {
+        if (!mounted) return;
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+              error.message ?? 'No se pudieron cargar los municipios.',
+            ),
+          ),
+        );
+      }
+    });
+  }
 
   @override
   void dispose() {
@@ -25,7 +47,7 @@ class _VisitorSetupScreenState extends State<VisitorSetupScreen> {
     super.dispose();
   }
 
-  void continueToMunicipality() {
+  Future<void> continueToMunicipality() async {
     final name = nameController.text.trim();
     final municipality = selectedMunicipality;
     if (name.isEmpty || municipality == null) {
@@ -37,19 +59,35 @@ class _VisitorSetupScreenState extends State<VisitorSetupScreen> {
       return;
     }
 
-    Provider.of<AuthProvider>(
-      context,
-      listen: false,
-    ).setVisitorProfile(name: name, municipality: municipality);
-    Navigator.pushReplacementNamed(
-      context,
-      AppRoutes.municipalityBusinesses,
-      arguments: {'municipality': municipality, 'visitorName': name},
-    );
+    setState(() => isLoading = true);
+    try {
+      await Provider.of<AuthProvider>(
+        context,
+        listen: false,
+      ).setVisitorProfile(name: name, municipality: municipality);
+      if (!mounted) return;
+      Navigator.pushReplacementNamed(
+        context,
+        AppRoutes.municipalityBusinesses,
+        arguments: {'municipality': municipality, 'visitorName': name},
+      );
+    } on FirebaseException catch (error) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            error.message ?? 'No se pudo guardar el perfil de visitante.',
+          ),
+        ),
+      );
+    } finally {
+      if (mounted) setState(() => isLoading = false);
+    }
   }
 
   @override
   Widget build(BuildContext context) {
+    final municipalities = context.watch<CatalogProvider>().municipalities;
     return Scaffold(
       appBar: AppBar(title: const Text('Bienvenido a Zap México')),
       body: SafeArea(
@@ -91,7 +129,7 @@ class _VisitorSetupScreenState extends State<VisitorSetupScreen> {
                   ),
                 ),
                 hint: const Text('Selecciona un municipio'),
-                items: regionMunicipalities
+                items: municipalities
                     .map(
                       (municipality) => DropdownMenuItem(
                         value: municipality,
@@ -106,6 +144,7 @@ class _VisitorSetupScreenState extends State<VisitorSetupScreen> {
               const Spacer(),
               CustomButton(
                 text: 'CONTINUAR',
+                isLoading: isLoading,
                 onPressed: continueToMunicipality,
               ),
             ],

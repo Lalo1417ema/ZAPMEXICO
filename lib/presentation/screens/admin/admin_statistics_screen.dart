@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'package:firebase_core/firebase_core.dart';
 
 import '../../providers/admin_provider.dart';
+import '../../providers/business_provider.dart';
 
 class AdminStatisticsScreen extends StatefulWidget {
   const AdminStatisticsScreen({super.key});
@@ -16,8 +18,21 @@ class _AdminStatisticsScreenState extends State<AdminStatisticsScreen> {
     super.initState();
 
     final provider = Provider.of<AdminProvider>(context, listen: false);
-    Future.microtask(() {
-      provider.loadStatistics();
+    final businesses = Provider.of<BusinessProvider>(context, listen: false);
+    Future.microtask(() async {
+      try {
+        await businesses.fetchAllBusinessesForAdmin();
+        await provider.loadStatistics(businesses);
+      } on FirebaseException catch (error) {
+        if (!mounted) return;
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+              error.message ?? 'No se pudieron cargar las estadísticas.',
+            ),
+          ),
+        );
+      }
     });
   }
 

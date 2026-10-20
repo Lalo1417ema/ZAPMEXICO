@@ -1,0 +1,115 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+    function signedIn() {
+      return request.auth != null;
+    }
+
+    function isAdmin() {
+      return signedIn()
+        && exists(/databases/$(database)/documents/admins/$(request.auth.uid));
+    }
+
+    function userIsActive() {
+      return !signedIn()
+        || !exists(/databases/$(database)/documents/users/$(request.auth.uid))
+        || get(/databases/$(database)/documents/users/$(request.auth.uid))
+          .data.get('blocked', false) != true;
+    }
+
+    match /admins/{userId} {
+      allow get: if signedIn() && request.auth.uid == userId;
+      allow list, create, update, delete: if false;
+    }
+
+    match /businesses/{businessId} {
+      allow read: if isAdmin()
+        || (userIsActive()
+          && resource.data.get('blocked', false) != true
+          && resource.data.status == 'approved')
+        || (userIsActive()
+          && signedIn()
+          && resource.data.createdBy == request.auth.uid);
+      allow create: if isAdmin()
+        || (userIsActive()
+          && signedIn()
+          && request.resource.data.status == 'pending'
+          && request.resource.data.createdBy == request.auth.uid);
+      allow update: if isAdmin()
+        && (!(resource.data.status != 'approved'
+              && request.resource.data.status == 'approved')
+          || (request.resource.data.gallery is list
+            && request.resource.data.gallery.size() >= 3))
+        || (userIsActive()
+          && signedIn()
+          && resource.data.createdBy == request.auth.uid
+          && resource.data.status == 'pending'
+          && request.resource.data.status == 'pending'
+          && request.resource.data.diff(resource.data).affectedKeys()
+            .hasOnly(['logoUrl', 'gallery', 'imageIsIllustrative', 'updatedAt'])
+          && request.resource.data.logoUrl is string
+          && ((request.resource.data.logoUrl == resource.data.logoUrl
+              && request.resource.data.imageIsIllustrative
+                == resource.data.imageIsIllustrative)
+            || (request.resource.data.imageIsIllustrative == false))
+          && request.resource.data.gallery is list
+          && request.resource.data.gallery.size() >= 3
+          && request.resource.data.gallery.size() <= 20);
+      allow delete: if isAdmin();
+    }
+
+    match /users/{userId} {
+      allow read: if isAdmin() || (signedIn() && request.auth.uid == userId);
+      allow create: if signedIn()
+        && request.auth.uid == userId
+        && !request.resource.data.keys().hasAny(['blocked']);
+      allow update: if (isAdmin()
+        && (!request.resource.data.diff(resource.data).affectedKeys()
+              .hasAny(['blocked'])
+          || request.resource.data.get('blocked', false) != true
+          || !exists(
+            /databases/$(database)/documents/admins/$(userId)
+          )))
+        || (signedIn()
+          && request.auth.uid == userId
+          && !request.resource.data.diff(resource.data).affectedKeys()
+            .hasAny(['blocked', 'role', 'isAdmin']));
+      allow delete: if isAdmin();
+    }
+
+    match /municipal_events/{eventId} {
+      allow read: if userIsActive();
+      allow create, update, delete: if isAdmin();
+    }
+
+    match /available_municipalities/{municipalityId} {
+      allow read: if userIsActive();
+      allow create, update, delete: if isAdmin();
+    }
+
+    match /available_categories/{categoryId} {
+      allow read: if userIsActive();
+      allow create, update, delete: if isAdmin();
+    }
+
+    match /catalog_requests/{requestId} {
+      allow read: if isAdmin();
+      allow create: if isAdmin()
+        || (userIsActive()
+          && signedIn()
+          && request.resource.data.status == 'pending'
+          && request.resource.data.type in ['municipality', 'category']
+          && request.resource.data.value is string
+          && request.resource.data.value.size() > 0
+          && request.resource.data.businessId is string
+          && existsAfter(
+            /databases/$(database)/documents/businesses/$(request.resource.data.businessId)
+          )
+          && getAfter(
+            /databases/$(database)/documents/businesses/$(request.resource.data.businessId)
+          ).data.createdBy == request.auth.uid);
+      allow update, delete: if isAdmin();
+    }
+  }
+}
