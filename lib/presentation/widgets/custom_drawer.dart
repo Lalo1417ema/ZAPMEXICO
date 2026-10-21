@@ -7,8 +7,41 @@ import '../../core/constants/app_colors.dart';
 import '../providers/auth_provider.dart';
 import 'registration_required_dialog.dart';
 
-class CustomDrawer extends StatelessWidget {
+class CustomDrawer extends StatefulWidget {
   const CustomDrawer({super.key});
+
+  @override
+  State<CustomDrawer> createState() => _CustomDrawerState();
+}
+
+class _CustomDrawerState extends State<CustomDrawer> {
+  bool _isLoggingOut = false;
+
+  Future<void> _logout() async {
+    if (_isLoggingOut) return;
+    setState(() => _isLoggingOut = true);
+    final navigator = Navigator.of(context);
+    try {
+      await context.read<AuthProvider>().logout();
+      if (!mounted) return;
+      navigator.pushNamedAndRemoveUntil(AppRoutes.login, (_) => false);
+    } on FirebaseException catch (error) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(error.message ?? 'No se pudo cerrar sesión.')),
+      );
+    } on Exception catch (error) {
+      debugPrint('Error al cerrar sesión: $error');
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('No se pudo cerrar sesión. Inténtalo de nuevo.'),
+        ),
+      );
+    } finally {
+      if (mounted) setState(() => _isLoggingOut = false);
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -145,27 +178,15 @@ class CustomDrawer extends StatelessWidget {
 
             ListTile(
               leading: const Icon(Icons.logout),
-              title: const Text('Cerrar sesión'),
-              onTap: () async {
-                try {
-                  await auth.logout();
-                  if (!context.mounted) return;
-                  Navigator.pushNamedAndRemoveUntil(
-                    context,
-                    AppRoutes.login,
-                    (route) => false,
-                  );
-                } on FirebaseException catch (error) {
-                  if (!context.mounted) return;
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(
-                      content: Text(
-                        error.message ?? 'No se pudo cerrar sesión.',
-                      ),
-                    ),
-                  );
-                }
-              },
+              title: Text(_isLoggingOut ? 'Cerrando sesión…' : 'Cerrar sesión'),
+              trailing: _isLoggingOut
+                  ? const SizedBox(
+                      width: 20,
+                      height: 20,
+                      child: CircularProgressIndicator(strokeWidth: 2),
+                    )
+                  : null,
+              onTap: _isLoggingOut ? null : _logout,
             ),
           ],
         ),

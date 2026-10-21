@@ -83,6 +83,14 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text(error.message ?? 'No se pudo cerrar sesión.')),
       );
+    } on Exception catch (error) {
+      debugPrint('Error al cerrar sesión de administrador: $error');
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('No se pudo cerrar sesión. Inténtalo de nuevo.'),
+        ),
+      );
     } finally {
       if (mounted) setState(() => _isLoggingOut = false);
     }

@@ -30,14 +30,28 @@ class AccountBlockedScreen extends StatelessWidget {
               const SizedBox(height: 20),
               FilledButton(
                 onPressed: () async {
-                  await context.read<AuthProvider>().logout();
-                  if (!context.mounted) return;
-                  Navigator.of(context).pushAndRemoveUntil(
-                    MaterialPageRoute<void>(
-                      builder: (_) => const LoginScreen(),
-                    ),
-                    (_) => false,
-                  );
+                  try {
+                    await context.read<AuthProvider>().logout();
+                    if (!context.mounted) return;
+                    Navigator.of(context).pushAndRemoveUntil(
+                      MaterialPageRoute<void>(
+                        builder: (_) => const LoginScreen(),
+                      ),
+                      (_) => false,
+                    );
+                  } on Exception catch (error) {
+                    debugPrint(
+                      'Error al cerrar sesión de cuenta bloqueada: $error',
+                    );
+                    if (!context.mounted) return;
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(
+                        content: Text(
+                          'No se pudo cerrar sesión. Inténtalo de nuevo.',
+                        ),
+                      ),
+                    );
+                  }
                 },
                 child: const Text('Cerrar sesión'),
               ),

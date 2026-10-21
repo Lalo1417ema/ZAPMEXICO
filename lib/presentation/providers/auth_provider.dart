@@ -345,10 +345,15 @@ class AuthProvider extends ChangeNotifier {
   }
 
   Future<void> logout() async {
-    final preferences = await SharedPreferences.getInstance();
-    await preferences.remove(_biometricEnabledKey);
-    await preferences.remove(_biometricUserKey);
     await _auth.signOut();
+
+    try {
+      final preferences = await SharedPreferences.getInstance();
+      await preferences.remove(_biometricEnabledKey);
+      await preferences.remove(_biometricUserKey);
+    } on Exception catch (error) {
+      debugPrint('No se pudieron limpiar las preferencias biométricas: $error');
+    }
   }
 
   Future<void> resetPassword(String email) async {
