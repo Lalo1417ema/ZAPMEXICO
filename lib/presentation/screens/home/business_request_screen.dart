@@ -12,6 +12,7 @@ import '../../providers/auth_provider.dart';
 import '../../providers/catalog_provider.dart';
 import '../../widgets/custom_button.dart';
 import '../../widgets/custom_text_field.dart';
+import '../../widgets/registration_required_dialog.dart';
 
 class BusinessRequestScreen extends StatefulWidget {
   const BusinessRequestScreen({super.key});
@@ -121,7 +122,34 @@ class _BusinessRequestScreenState extends State<BusinessRequestScreen> {
   @override
   Widget build(BuildContext context) {
     final provider = Provider.of<BusinessProvider>(context);
-    final isAdmin = context.watch<AuthProvider>().isAdmin;
+    final auth = context.watch<AuthProvider>();
+    final isAdmin = auth.isAdmin;
+    if (auth.isVisitor) {
+      return Scaffold(
+        appBar: AppBar(title: const Text('Registrar negocio')),
+        body: Center(
+          child: Padding(
+            padding: const EdgeInsets.all(24),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                const Icon(Icons.lock_outline, size: 56),
+                const SizedBox(height: 16),
+                const Text(
+                  'Necesitas una cuenta para registrar un negocio.',
+                  textAlign: TextAlign.center,
+                ),
+                const SizedBox(height: 16),
+                FilledButton(
+                  onPressed: () => showRegistrationRequiredDialog(context),
+                  child: const Text('Registrarme'),
+                ),
+              ],
+            ),
+          ),
+        ),
+      );
+    }
     final catalogs = context.watch<CatalogProvider>();
     final categories = catalogs.categories;
     final municipalities = catalogs.municipalities;

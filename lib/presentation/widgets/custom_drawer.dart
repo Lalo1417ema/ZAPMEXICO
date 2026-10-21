@@ -5,6 +5,7 @@ import 'package:firebase_core/firebase_core.dart';
 import '../../config/routes/app_routes.dart';
 import '../../core/constants/app_colors.dart';
 import '../providers/auth_provider.dart';
+import 'registration_required_dialog.dart';
 
 class CustomDrawer extends StatelessWidget {
   const CustomDrawer({super.key});
@@ -14,6 +15,7 @@ class CustomDrawer extends StatelessWidget {
     final auth = Provider.of<AuthProvider>(context);
 
     final user = auth.currentUserModel;
+    final photoUrl = user?['photoUrl']?.toString() ?? '';
 
     return Drawer(
       backgroundColor: AppColors.surface,
@@ -22,7 +24,13 @@ class CustomDrawer extends StatelessWidget {
           children: [
             const SizedBox(height: 20),
 
-            const CircleAvatar(radius: 45, child: Icon(Icons.person, size: 50)),
+            CircleAvatar(
+              radius: 45,
+              backgroundImage: photoUrl.isEmpty ? null : NetworkImage(photoUrl),
+              child: photoUrl.isEmpty
+                  ? const Icon(Icons.person, size: 50)
+                  : null,
+            ),
 
             const SizedBox(height: 16),
 
@@ -72,10 +80,34 @@ class CustomDrawer extends StatelessWidget {
             ),
 
             ListTile(
+              leading: const Icon(Icons.manage_accounts),
+              title: Text(auth.isVisitor ? 'Crear perfil' : 'Mi perfil'),
+              onTap: () {
+                if (auth.isVisitor) {
+                  showRegistrationRequiredDialog(context);
+                } else {
+                  Navigator.pushNamed(context, AppRoutes.profile);
+                }
+              },
+            ),
+
+            ListTile(
               leading: const Icon(Icons.favorite),
               title: const Text('Mis Favoritos'),
               onTap: () {
+                if (auth.isVisitor) {
+                  showRegistrationRequiredDialog(context);
+                  return;
+                }
                 Navigator.pushNamed(context, AppRoutes.favorites);
+              },
+            ),
+
+            ListTile(
+              leading: const Icon(Icons.shopping_bag),
+              title: const Text('Marketplace'),
+              onTap: () {
+                Navigator.pushNamed(context, AppRoutes.marketplace);
               },
             ),
 
@@ -84,6 +116,10 @@ class CustomDrawer extends StatelessWidget {
               title: const Text('Registrar negocio'),
 
               onTap: () {
+                if (auth.isVisitor) {
+                  showRegistrationRequiredDialog(context);
+                  return;
+                }
                 Navigator.pushNamed(context, AppRoutes.businessRequest);
               },
             ),

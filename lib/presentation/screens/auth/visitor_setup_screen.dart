@@ -25,9 +25,20 @@ class _VisitorSetupScreenState extends State<VisitorSetupScreen> {
   void initState() {
     super.initState();
     final catalogs = context.read<CatalogProvider>();
+    final profile = context.read<AuthProvider>().currentUserModel;
+    nameController.text = profile?['name']?.toString() ?? '';
     Future.microtask(() async {
       try {
         await catalogs.loadCatalogs();
+        if (!mounted) return;
+        final arguments = ModalRoute.of(context)?.settings.arguments;
+        final requestedMunicipality = arguments is Map
+            ? arguments['municipality']?.toString()
+            : profile?['city']?.toString();
+        if (requestedMunicipality != null &&
+            catalogs.municipalities.contains(requestedMunicipality)) {
+          setState(() => selectedMunicipality = requestedMunicipality);
+        }
       } on FirebaseException catch (error) {
         if (!mounted) return;
         ScaffoldMessenger.of(context).showSnackBar(
@@ -88,21 +99,28 @@ class _VisitorSetupScreenState extends State<VisitorSetupScreen> {
   @override
   Widget build(BuildContext context) {
     final municipalities = context.watch<CatalogProvider>().municipalities;
+    final isVisitor = context.watch<AuthProvider>().isVisitor;
     return Scaffold(
-      appBar: AppBar(title: const Text('Bienvenido a Zap México')),
+      appBar: AppBar(
+        title: Text(
+          isVisitor ? 'Bienvenido a Zap México' : 'Completa tu perfil',
+        ),
+      ),
       body: SafeArea(
         child: Padding(
           padding: const EdgeInsets.all(24),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              const Text(
-                'Antes de comenzar',
+              Text(
+                isVisitor ? 'Antes de comenzar' : 'Un último paso',
                 style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
               ),
               const SizedBox(height: 8),
-              const Text(
-                'Escribe tu nombre y elige el municipio donde quieres buscar negocios.',
+              Text(
+                isVisitor
+                    ? 'Escribe tu nombre y elige el municipio donde quieres buscar negocios.'
+                    : 'Confirma tu nombre y elige el municipio para continuar.',
                 style: TextStyle(color: AppColors.greyText),
               ),
               const SizedBox(height: 24),

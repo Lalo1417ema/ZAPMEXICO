@@ -9,6 +9,11 @@ service firebase.storage {
         );
     }
 
+    function isRegisteredUser() {
+      return request.auth != null
+        && request.auth.token.firebase.sign_in_provider != 'anonymous';
+    }
+
     function businessData(businessId) {
       return firestore.get(
         /databases/(default)/documents/businesses/$(businessId)
@@ -41,7 +46,8 @@ service firebase.storage {
         && request.resource.size < 10 * 1024 * 1024
         && request.resource.contentType.matches('image/.*')
         && (isAdmin()
-          || (businessData(businessId).createdBy == request.auth.uid
+          || (isRegisteredUser()
+            && businessData(businessId).createdBy == request.auth.uid
             && businessData(businessId).status == 'pending'));
     }
 
@@ -50,6 +56,28 @@ service firebase.storage {
       allow write: if isAdmin()
         && request.resource.size < 10 * 1024 * 1024
         && request.resource.contentType.matches('image/.*');
+    }
+
+    match /user_profiles/{userId}/{fileName} {
+      allow read: if userIsActive();
+      allow write: if isRegisteredUser()
+        && userIsActive()
+        && request.auth.uid == userId
+        && request.resource.size < 5 * 1024 * 1024
+        && request.resource.contentType.matches('image/.*');
+    }
+
+    match /marketplace/{userId}/{productId}/{fileName} {
+      allow read: if userIsActive();
+      allow create: if userIsActive()
+        && isRegisteredUser()
+        && request.auth.uid == userId
+        && request.resource.size < 10 * 1024 * 1024
+        && request.resource.contentType.matches('image/.*');
+      allow update: if false;
+      allow delete: if userIsActive()
+        && isRegisteredUser()
+        && request.auth.uid == userId;
     }
   }
 }

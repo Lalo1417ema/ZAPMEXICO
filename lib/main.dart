@@ -13,6 +13,7 @@ import 'presentation/providers/business_provider.dart';
 import 'presentation/providers/admin_provider.dart';
 import 'presentation/providers/municipal_event_provider.dart';
 import 'presentation/providers/catalog_provider.dart';
+import 'presentation/providers/marketplace_provider.dart';
 
 import 'presentation/screens/auth/login_screen.dart';
 import 'presentation/screens/auth/visitor_setup_screen.dart';
@@ -20,10 +21,12 @@ import 'presentation/screens/auth/register_screen.dart';
 import 'presentation/screens/auth/forgot_password_screen.dart';
 import 'presentation/screens/auth/reset_password_screen.dart';
 import 'presentation/screens/auth/account_blocked_screen.dart';
+import 'presentation/screens/auth/profile_screen.dart';
 
 import 'presentation/screens/home/business_detail_screen.dart';
 import 'presentation/screens/home/business_request_screen.dart';
 import 'presentation/screens/home/municipality_businesses_screen.dart';
+import 'presentation/screens/home/marketplace_screen.dart';
 import 'presentation/screens/admin/admin_dashboard_screen.dart';
 import 'presentation/screens/admin/monetization_mock_screen.dart';
 
@@ -52,6 +55,7 @@ class ZapMexicoApp extends StatelessWidget {
         ChangeNotifierProvider(create: (_) => AdminProvider()),
         ChangeNotifierProvider(create: (_) => MunicipalEventProvider()),
         ChangeNotifierProvider(create: (_) => CatalogProvider()),
+        ChangeNotifierProvider(create: (_) => MarketplaceProvider()),
       ],
       child: MaterialApp(
         debugShowCheckedModeBanner: false,
@@ -66,6 +70,8 @@ class ZapMexicoApp extends StatelessWidget {
           AppRoutes.login: (_) => const LoginScreen(),
           AppRoutes.visitorSetup: (_) => const VisitorSetupScreen(),
           AppRoutes.register: (_) => const RegisterScreen(),
+          AppRoutes.profile: (_) => const ProfileScreen(),
+          AppRoutes.marketplace: (_) => const MarketplaceScreen(),
           AppRoutes.forgotPassword: (_) => const ForgotPasswordScreen(),
           AppRoutes.resetPassword: (_) => const ResetPasswordScreen(),
           AppRoutes.municipalityBusinesses: (_) =>

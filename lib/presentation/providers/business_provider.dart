@@ -181,6 +181,9 @@ class BusinessProvider extends ChangeNotifier {
     if (firebaseConfigured && currentUser == null) {
       throw StateError('Inicia sesión antes de registrar un negocio.');
     }
+    if (currentUser?.isAnonymous == true) {
+      throw StateError('Regístrate o inicia sesión para registrar un negocio.');
+    }
 
     final businessId = firebaseConfigured
         ? _firestore.collection('businesses').doc().id
@@ -374,18 +377,31 @@ class BusinessProvider extends ChangeNotifier {
     required double rating,
     required String comment,
   }) async {
+    final currentUser = FirebaseAuth.instance.currentUser;
+    if (Firebase.apps.isNotEmpty &&
+        (currentUser == null || currentUser.isAnonymous)) {
+      throw StateError('Regístrate o inicia sesión para calificar negocios.');
+    }
+    final userId = currentUser?.uid ?? 'demo-user';
     if (_reviews.any(
       (review) =>
-          review['businessId'] == businessId && review['userId'] == 'demo-user',
+          review['businessId'] == businessId && review['userId'] == userId,
     )) {
       throw Exception('Ya has calificado este negocio anteriormente.');
     }
 
+    final userProfile = Firebase.apps.isNotEmpty
+        ? await _firestore.collection('users').doc(userId).get()
+        : null;
+    final userName =
+        userProfile?.data()?['name']?.toString() ??
+        currentUser?.displayName ??
+        'Usuario';
     _reviews.add({
       'id': 'review-${_nextReviewId++}',
       'businessId': businessId,
-      'userId': 'demo-user',
-      'userName': 'Visitante',
+      'userId': userId,
+      'userName': userName,
       'rating': rating,
       'comment': comment,
       'createdAt': DateTime.now(),
@@ -421,6 +437,23 @@ class BusinessProvider extends ChangeNotifier {
   bool isFavorite(String businessId) => favoriteIds.contains(businessId);
 
   Future<void> fetchFavorites() async {
+    if (Firebase.apps.isNotEmpty) {
+      final currentUser = FirebaseAuth.instance.currentUser;
+      if (currentUser == null || currentUser.isAnonymous) {
+        favoriteIds.clear();
+        favoriteBusinesses.clear();
+        notifyListeners();
+        return;
+      }
+      final favorites = await _firestore
+          .collection('users')
+          .doc(currentUser.uid)
+          .collection('favorites')
+          .get();
+      favoriteIds
+        ..clear()
+        ..addAll(favorites.docs.map((document) => document.id));
+    }
     favoriteBusinesses
       ..clear()
       ..addAll(
@@ -432,6 +465,29 @@ class BusinessProvider extends ChangeNotifier {
   }
 
   Future<void> toggleFavorite(String businessId) async {
+    if (Firebase.apps.isNotEmpty) {
+      final currentUser = FirebaseAuth.instance.currentUser;
+      if (currentUser == null || currentUser.isAnonymous) {
+        throw StateError('Regístrate o inicia sesión para guardar favoritos.');
+      }
+      final favoriteReference = _firestore
+          .collection('users')
+          .doc(currentUser.uid)
+          .collection('favorites')
+          .doc(businessId);
+      if (favoriteIds.contains(businessId)) {
+        await favoriteReference.delete();
+        favoriteIds.remove(businessId);
+      } else {
+        await favoriteReference.set({
+          'businessId': businessId,
+          'createdAt': FieldValue.serverTimestamp(),
+        });
+        favoriteIds.add(businessId);
+      }
+      await fetchFavorites();
+      return;
+    }
     if (!favoriteIds.add(businessId)) {
       favoriteIds.remove(businessId);
     }

@@ -12,4 +12,6 @@ class AppRoutes {
   static const adminStatistics = '/admin-statistics';
   static const municipalityBusinesses = '/municipality-businesses';
   static const visitorSetup = '/visitor-setup';
+  static const profile = '/profile';
+  static const marketplace = '/marketplace';
 }

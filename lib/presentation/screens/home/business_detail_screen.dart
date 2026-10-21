@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:firebase_core/firebase_core.dart';
 import 'dart:typed_data';
 import 'package:provider/provider.dart';
 import '../../../core/constants/app_colors.dart';
@@ -6,6 +7,8 @@ import '../../../core/utils/business_field_value.dart';
 import '../../widgets/rating_stars.dart';
 import '../../widgets/review_dialog.dart';
 import '../../providers/business_provider.dart';
+import '../../providers/auth_provider.dart';
+import '../../widgets/registration_required_dialog.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 class BusinessDetailScreen extends StatefulWidget {
@@ -17,6 +20,30 @@ class BusinessDetailScreen extends StatefulWidget {
 
 class _BusinessDetailScreenState extends State<BusinessDetailScreen> {
   int _currentGalleryPage = 0;
+
+  @override
+  void initState() {
+    super.initState();
+    final businessProvider = context.read<BusinessProvider>();
+    
+    // 👈 SOLUCIÓN: Usamos addPostFrameCallback para evitar conflictos de contexto en el initState
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      Future.microtask(() async {
+        try {
+          await businessProvider.fetchFavorites();
+        } on FirebaseException catch (error) {
+          if (!mounted) return;
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text(
+                error.message ?? 'No se pudieron cargar los favoritos.',
+              ),
+            ),
+          );
+        }
+      });
+    });
+  }
 
   // --- HELPERS DE LANZAMIENTO URL ---
   Future<void> launchPhone(String phone) async {
@@ -221,20 +248,41 @@ class _BusinessDetailScreenState extends State<BusinessDetailScreen> {
                           size: 28,
                         ),
                         onPressed: () async {
-                          await provider.toggleFavorite(businessId);
+                          if (context.read<AuthProvider>().isVisitor) {
+                            await showRegistrationRequiredDialog(context);
+                            return;
+                          }
+                          try {
+                            await provider.toggleFavorite(businessId);
 
-                          if (!context.mounted) return;
+                            if (!context.mounted) return;
 
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            SnackBar(
-                              duration: const Duration(seconds: 2),
-                              content: Text(
-                                provider.isFavorite(businessId)
-                                    ? 'Agregado a favoritos'
-                                    : 'Eliminado de favoritos',
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              SnackBar(
+                                duration: const Duration(seconds: 2),
+                                content: Text(
+                                  provider.isFavorite(businessId)
+                                      ? 'Agregado a favoritos'
+                                      : 'Eliminado de favoritos',
+                                ),
                               ),
-                            ),
-                          );
+                            );
+                          } on FirebaseException catch (error) {
+                            if (!context.mounted) return;
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              SnackBar(
+                                content: Text(
+                                  error.message ??
+                                      'No se pudo actualizar favoritos.',
+                                ),
+                              ),
+                            );
+                          } on StateError catch (error) {
+                            if (!context.mounted) return;
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              SnackBar(content: Text(error.message)),
+                            );
+                          }
                         },
                       ),
                     ],
@@ -520,7 +568,6 @@ class _BusinessDetailScreenState extends State<BusinessDetailScreen> {
 
                   const SizedBox(height: 35),
 
-                  // ✍️ SECCIÓN DE RESEÑAS Y BOTÓN DE ACCIÓN
                   Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
@@ -533,6 +580,10 @@ class _BusinessDetailScreenState extends State<BusinessDetailScreen> {
                       ),
                       ElevatedButton.icon(
                         onPressed: () async {
+                          if (context.read<AuthProvider>().isVisitor) {
+                            await showRegistrationRequiredDialog(context);
+                            return;
+                          }
                           final provider = Provider.of<BusinessProvider>(
                             context,
                             listen: false,

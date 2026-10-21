@@ -36,6 +36,10 @@ firebase deploy --only firestore:rules,storage
 3. En **Firestore Database**, crea la colección `admins` y un documento cuyo ID sea exactamente ese UID. Agrega el campo `role` (tipo string) con valor `admin`.
 4. Cierra y vuelve a iniciar sesión en la app. El panel de administración aparecerá para esa cuenta.
 
+Al iniciar con Google, el formulario de cuenta nueva toma el nombre y correo del perfil de Google; si el perfil de la app aún está incompleto, se solicita terminarlo antes de continuar. En el acceso normal se recuerda localmente el último correo usado y se habilita el autocompletado seguro del dispositivo para las credenciales. La app no guarda contraseñas. Después de iniciar sesión, en dispositivos Android/iOS con biometría configurada se puede activar el desbloqueo con huella o Face ID para volver a abrir la sesión existente. El atajo biométrico no guarda credenciales y se desactiva al cerrar sesión explícitamente.
+
+Los visitantes pueden explorar el directorio, pero deben crear una cuenta o iniciar sesión para registrar negocios, guardar favoritos, calificar o editar su perfil. Los perfiles registrados pueden cambiar nombre y usuario y subir una foto desde **Mi perfil**. Las fotos se guardan en Storage bajo una ruta privada de usuario.
+
 No se puede asignar el rol desde la app: las reglas bloquean escrituras en `admins`. Los administradores pueden crear fichas desde **Agregar negocio**; se guardan automáticamente en Firestore con estado pendiente. Desde el panel pueden aprobar/rechazar solicitudes, modificar fichas y subir imágenes. El público solo puede leer negocios aprobados.
 
 Las solicitudes de usuarios también se guardan en Firestore y aparecen en la pestaña **Pendientes** para revisión. Al registrar un negocio se selecciona un municipio y categoría disponibles; si falta una opción, se puede proponer desde el formulario. Las propuestas quedan pendientes en **Catálogos**, junto al negocio que las originó, y solo se incorporan al catálogo cuando un administrador las aprueba. Las propuestas de municipios se validan contra la lista oficial de Michoacán. Al registrar un negocio se pueden seleccionar un logo y al menos tres fotos para su carrusel; el logo es opcional y, si no se carga, se usa la ilustración de categoría. Los archivos se guardan en Firebase Storage. Solo el propietario de una ficha pendiente puede subir sus imágenes; el administrador puede cambiar logo, fotos y datos. Para proteger la publicación, una ficha nueva no se puede aprobar hasta que tenga tres fotos.
@@ -47,6 +51,20 @@ Si las reglas ya se desplegaron antes de habilitar la carga de imágenes por pro
 ```sh
 firebase deploy --only firestore:rules,storage --project zap2026-382a1
 ```
+
+### Marketplace
+
+El Marketplace está disponible desde el menú principal. Cualquier persona puede consultar publicaciones vigentes; para publicar se requiere una cuenta registrada, un nombre de producto, precio mayor que cero y entre una y tres fotos. La ubicación y el nombre del vendedor se toman del perfil, y se muestra la fecha y hora de publicación. Cada propietario puede eliminar sus anuncios.
+
+Las publicaciones vencen cinco días después de publicarse. La función programada `expireMarketplaceProducts` revisa los anuncios una vez al día y elimina los vencidos junto con sus fotos de Firebase Storage; por ello, el borrado puede ocurrir hasta 24 horas después de cumplir cinco días. Para instalar sus dependencias y desplegar la función y las reglas:
+
+```sh
+npm --prefix functions install
+npm --prefix functions run lint
+firebase deploy --only functions,firestore:rules,storage --project zap2026-382a1
+```
+
+Las funciones programadas requieren que el proyecto tenga facturación de Google Cloud habilitada.
 
 ## Ejecutar
 

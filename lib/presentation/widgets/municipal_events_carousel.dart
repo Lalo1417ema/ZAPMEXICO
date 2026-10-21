@@ -105,7 +105,8 @@ class _MunicipalEventsCarouselState extends State<MunicipalEventsCarousel> {
           ),
         ),
         SizedBox(
-          height: 164,
+          // Altura aumentada de 164 a 176 para evitar desbordamientos
+          height: 176,
           child: PageView.builder(
             controller: _pageController,
             itemCount: widget.events.length,
@@ -172,7 +173,8 @@ class _EventCard extends StatelessWidget {
                 }
               },
         child: Ink(
-          padding: const EdgeInsets.all(18),
+          // Padding interno ajustado ligeramente a 14 para optimizar espacio
+          padding: const EdgeInsets.all(14),
           decoration: BoxDecoration(
             gradient: const LinearGradient(
               colors: [Color(0xFFB83F08), Color(0xFF62230F), Color(0xFF30201C)],
@@ -213,7 +215,7 @@ class _EventCard extends StatelessWidget {
                   ),
                 ),
                 child: Padding(
-                  padding: const EdgeInsets.all(18),
+                  padding: const EdgeInsets.all(14),
                   child: Row(
                     children: [
                       Expanded(
@@ -232,36 +234,36 @@ class _EventCard extends StatelessWidget {
                                 letterSpacing: 1,
                               ),
                             ),
-                            const SizedBox(height: 7),
+                            const SizedBox(height: 4),
                             Text(
                               event.title,
                               maxLines: 2,
                               overflow: TextOverflow.ellipsis,
                               style: const TextStyle(
-                                fontSize: 19,
+                                fontSize: 18,
                                 height: 1.1,
                                 fontWeight: FontWeight.w900,
                                 color: Colors.white,
                               ),
                             ),
-                            const SizedBox(height: 6),
+                            const SizedBox(height: 4),
                             Text(
                               event.description,
                               maxLines: 2,
                               overflow: TextOverflow.ellipsis,
                               style: const TextStyle(
                                 color: Colors.white70,
-                                fontSize: 12,
-                                height: 1.2,
+                                fontSize: 11.5,
+                                height: 1.15,
                               ),
                             ),
                             if (event.sourceUrl != null) ...[
-                              const SizedBox(height: 7),
+                              const SizedBox(height: 4),
                               const Text(
                                 'CONSULTAR PROGRAMA OFICIAL  ↗',
                                 style: TextStyle(
                                   color: Color(0xFFFFD7A8),
-                                  fontSize: 10,
+                                  fontSize: 9.5,
                                   fontWeight: FontWeight.w800,
                                   letterSpacing: 0.4,
                                 ),
@@ -272,8 +274,8 @@ class _EventCard extends StatelessWidget {
                       ),
                       const SizedBox(width: 8),
                       Container(
-                        width: 62,
-                        height: 62,
+                        width: 58,
+                        height: 58,
                         decoration: BoxDecoration(
                           color: Colors.white.withValues(alpha: 0.12),
                           shape: BoxShape.circle,
@@ -282,7 +284,7 @@ class _EventCard extends StatelessWidget {
                         child: Icon(
                           event.icon,
                           color: const Color(0xFFFFD7A8),
-                          size: 32,
+                          size: 30,
                         ),
                       ),
                     ],

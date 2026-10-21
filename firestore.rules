@@ -11,6 +11,11 @@ service cloud.firestore {
         && exists(/databases/$(database)/documents/admins/$(request.auth.uid));
     }
 
+    function isRegisteredUser() {
+      return signedIn()
+        && request.auth.token.firebase.sign_in_provider != 'anonymous';
+    }
+
     function userIsActive() {
       return !signedIn()
         || !exists(/databases/$(database)/documents/users/$(request.auth.uid))
@@ -33,7 +38,7 @@ service cloud.firestore {
           && resource.data.createdBy == request.auth.uid);
       allow create: if isAdmin()
         || (userIsActive()
-          && signedIn()
+          && isRegisteredUser()
           && request.resource.data.status == 'pending'
           && request.resource.data.createdBy == request.auth.uid);
       allow update: if isAdmin()
@@ -76,6 +81,12 @@ service cloud.firestore {
           && !request.resource.data.diff(resource.data).affectedKeys()
             .hasAny(['blocked', 'role', 'isAdmin']));
       allow delete: if isAdmin();
+
+      match /favorites/{businessId} {
+        allow read, write: if userIsActive()
+          && isRegisteredUser()
+          && request.auth.uid == userId;
+      }
     }
 
     match /municipal_events/{eventId} {
@@ -97,7 +108,7 @@ service cloud.firestore {
       allow read: if isAdmin();
       allow create: if isAdmin()
         || (userIsActive()
-          && signedIn()
+          && isRegisteredUser()
           && request.resource.data.status == 'pending'
           && request.resource.data.type in ['municipality', 'category']
           && request.resource.data.value is string
@@ -110,6 +121,41 @@ service cloud.firestore {
             /databases/$(database)/documents/businesses/$(request.resource.data.businessId)
           ).data.createdBy == request.auth.uid);
       allow update, delete: if isAdmin();
+    }
+
+    match /marketplace_products/{productId} {
+      allow read: if userIsActive();
+      allow create: if userIsActive()
+        && isRegisteredUser()
+        && request.resource.data.keys().hasAll([
+          'name', 'description', 'price', 'sellerUid', 'sellerName',
+          'municipality', 'photoUrls', 'photoPaths', 'createdAt'
+        ])
+        && request.resource.data.keys().hasOnly([
+          'name', 'description', 'price', 'sellerUid', 'sellerName',
+          'municipality', 'photoUrls', 'photoPaths', 'createdAt'
+        ])
+        && request.resource.data.sellerUid == request.auth.uid
+        && request.resource.data.name is string
+        && request.resource.data.name.size() > 0
+        && request.resource.data.description is string
+        && request.resource.data.price is number
+        && request.resource.data.price > 0
+        && request.resource.data.sellerName is string
+        && request.resource.data.municipality is string
+        && request.resource.data.municipality.size() > 0
+        && request.resource.data.photoUrls is list
+        && request.resource.data.photoPaths is list
+        && request.resource.data.photoUrls.size() > 0
+        && request.resource.data.photoUrls.size() <= 3
+        && request.resource.data.photoPaths.size()
+          == request.resource.data.photoUrls.size()
+        && request.resource.data.createdAt == request.time;
+      allow update: if false;
+      allow delete: if isAdmin()
+        || (userIsActive()
+          && isRegisteredUser()
+          && resource.data.sellerUid == request.auth.uid);
     }
   }
 }

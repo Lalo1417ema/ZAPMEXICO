@@ -1,10 +1,13 @@
 import 'package:flutter/material.dart';
+import 'package:firebase_core/firebase_core.dart';
 import 'dart:typed_data';
 import 'package:provider/provider.dart';
 
 import '../../../config/routes/app_routes.dart'; // Asegúrate de ajustar esta ruta según tu proyecto
 import '../../../core/constants/app_colors.dart'; // Ajusta según tus constantes de diseño
 import '../../providers/business_provider.dart';
+import '../../providers/auth_provider.dart';
+import '../../widgets/registration_required_dialog.dart';
 
 class FavoritesScreen extends StatefulWidget {
   const FavoritesScreen({super.key});
@@ -27,10 +30,31 @@ class _FavoritesScreenState extends State<FavoritesScreen> {
   @override
   Widget build(BuildContext context) {
     final provider = Provider.of<BusinessProvider>(context);
+    final auth = context.watch<AuthProvider>();
 
     return Scaffold(
       appBar: AppBar(title: const Text('Mis Favoritos'), centerTitle: true),
-      body: provider.favoriteBusinesses.isEmpty
+      body: auth.isVisitor
+          ? Center(
+              child: Padding(
+                padding: const EdgeInsets.all(24),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    const Text(
+                      'Regístrate o inicia sesión para guardar y consultar favoritos.',
+                      textAlign: TextAlign.center,
+                    ),
+                    const SizedBox(height: 16),
+                    FilledButton(
+                      onPressed: () => showRegistrationRequiredDialog(context),
+                      child: const Text('Crear cuenta'),
+                    ),
+                  ],
+                ),
+              ),
+            )
+          : provider.favoriteBusinesses.isEmpty
           ? const Center(
               child: Text(
                 'No tienes negocios favoritos aún.',
@@ -148,7 +172,26 @@ class _FavoritesScreenState extends State<FavoritesScreen> {
                         color: Colors.redAccent,
                       ),
                       onPressed: () async {
-                        await provider.toggleFavorite(business['id']);
+                        try {
+                          await provider.toggleFavorite(
+                            business['id'].toString(),
+                          );
+                        } on FirebaseException catch (error) {
+                          if (!context.mounted) return;
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            SnackBar(
+                              content: Text(
+                                error.message ??
+                                    'No se pudo actualizar favoritos.',
+                              ),
+                            ),
+                          );
+                        } on StateError catch (error) {
+                          if (!context.mounted) return;
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            SnackBar(content: Text(error.message)),
+                          );
+                        }
                       },
                     ),
 
