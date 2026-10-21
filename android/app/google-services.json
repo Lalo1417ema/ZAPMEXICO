@@ -14,6 +14,14 @@
       },
       "oauth_client": [
         {
+          "client_id": "814376171285-hnss07kt24vrgjbco0473t16tihdnc7j.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "mx.tecnm.cdhidalgo.zap_mexico",
+            "certificate_hash": "5e8f16062ea3cd2c4a0d547876baa6f38cabf625"
+          }
+        },
+        {
           "client_id": "814376171285-tb4qsmvnqcorb11n3uirro0t4buk2jb7.apps.googleusercontent.com",
           "client_type": 3
         }
@@ -27,7 +35,7 @@
         "appinvite_service": {
           "other_platform_oauth_client": [
             {
-              "client_id": "814376171285-tb4qsmvnqcorb11n3uirro0t4buk2jb7.apps.googleusercontent.com",
+              "client_id": "814376171285-qt1br00vmnjc3dps0l7nemsmp5873a56.apps.googleusercontent.com",
               "client_type": 3
             },
             {
