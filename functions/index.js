@@ -1,6 +1,11 @@
 const { initializeApp } = require("firebase-admin/app");
 const { getFirestore, Timestamp } = require("firebase-admin/firestore");
+const { getMessaging } = require("firebase-admin/messaging");
 const { getStorage } = require("firebase-admin/storage");
+const {
+  onDocumentCreated,
+  onDocumentUpdated,
+} = require("firebase-functions/v2/firestore");
 const { onSchedule } = require("firebase-functions/v2/scheduler");
 const logger = require("firebase-functions/logger");
 
@@ -10,6 +15,170 @@ const db = getFirestore();
 const bucket = getStorage().bucket();
 const batchSize = 200;
 const parallelDeletes = 20;
+
+async function notifyUser({
+  uid,
+  notificationId,
+  type,
+  title,
+  body,
+  referenceId,
+}) {
+  const notificationRef = db
+    .collection("users")
+    .doc(uid)
+    .collection("notifications")
+    .doc(notificationId);
+  await db.runTransaction(async (transaction) => {
+    const existing = await transaction.get(notificationRef);
+    if (existing.exists) return;
+    transaction.create(notificationRef, {
+      type,
+      title,
+      body,
+      referenceId,
+      createdAt: Timestamp.now(),
+      readAt: null,
+      pushSent: false,
+    });
+  });
+  const notificationSnapshot = await notificationRef.get();
+  if (!notificationSnapshot.exists || notificationSnapshot.get("pushSent")) {
+    return;
+  }
+
+  const tokenSnapshot = await db
+    .collection("users")
+    .doc(uid)
+    .collection("notification_tokens")
+    .get();
+  const tokenDocuments = tokenSnapshot.docs.filter(
+    (document) => typeof document.get("token") === "string",
+  );
+  const tokens = tokenDocuments.map((document) => document.get("token"));
+  if (tokens.length === 0) {
+    await notificationRef.update({ pushSent: true });
+    return;
+  }
+
+  for (let index = 0; index < tokens.length; index += 500) {
+    const tokenBatch = tokens.slice(index, index + 500);
+    const documentBatch = tokenDocuments.slice(index, index + 500);
+    try {
+      const response = await getMessaging().sendEachForMulticast({
+        tokens: tokenBatch,
+        notification: { title, body },
+        data: {
+          type,
+          notificationId,
+          referenceId: referenceId || "",
+        },
+        android: {
+          notification: {
+            channelId: "zap_mexico_notifications",
+            sound: "default",
+          },
+        },
+        apns: {
+          payload: { aps: { sound: "default" } },
+        },
+      });
+
+      const staleTokens = [];
+      response.responses.forEach((result, tokenIndex) => {
+        const code = result.error?.code;
+        if (
+          code === "messaging/registration-token-not-registered" ||
+          code === "messaging/invalid-registration-token"
+        ) {
+          staleTokens.push(documentBatch[tokenIndex].ref);
+        } else if (!result.success) {
+          logger.error("Could not deliver a push notification", {
+            uid,
+            code,
+          });
+        }
+      });
+      if (staleTokens.length > 0) {
+        const batch = db.batch();
+        staleTokens.forEach((reference) => batch.delete(reference));
+        await batch.commit();
+      }
+    } catch (error) {
+      logger.error("Push notification delivery failed", { uid, error });
+    }
+  }
+  await notificationRef.update({ pushSent: true });
+}
+
+exports.notifyAdminsOfNewListing = onDocumentCreated(
+  {
+    document: "businesses/{businessId}",
+    region: "us-central1",
+  },
+  async (event) => {
+    const listing = event.data?.data();
+    if (!listing || listing.status !== "pending") return;
+
+    const isService = listing.listingType === "service";
+    const admins = await db.collection("admins").get();
+    await Promise.all(
+      admins.docs.map((admin) =>
+        notifyUser({
+          uid: admin.id,
+          notificationId: `new-listing-${event.params.businessId}`,
+          type: "admin_new_request",
+          title: isService ? "Nuevo prestador por revisar" : "Nuevo negocio por revisar",
+          body: `${listing.name || "Una publicación"} · ${listing.city || ""}`,
+          referenceId: event.params.businessId,
+        }),
+      ),
+    );
+  },
+);
+
+exports.notifyListingDecision = onDocumentUpdated(
+  {
+    document: "businesses/{businessId}",
+    region: "us-central1",
+  },
+  async (event) => {
+    const before = event.data?.before.data();
+    const after = event.data?.after.data();
+    if (
+      !before ||
+      !after ||
+      before.status === after.status ||
+      !["approved", "rejected"].includes(after.status) ||
+      typeof after.createdBy !== "string" ||
+      !after.createdBy ||
+      after.createdBy === "demo-user"
+    ) {
+      return;
+    }
+
+    const isService = after.listingType === "service";
+    const approved = after.status === "approved";
+    await notifyUser({
+      uid: after.createdBy,
+      notificationId: `listing-${event.params.businessId}-${after.status}`,
+      type: approved ? "business_approved" : "business_rejected",
+      title: isService
+        ? approved
+          ? "Prestador aprobado"
+          : "Prestador rechazado"
+        : approved
+          ? "Negocio aprobado"
+          : "Negocio rechazado",
+      body: `${after.name || "Tu publicación"}: ${
+        approved
+          ? "ya aparece en el directorio."
+          : after.adminComment || "revisa la información y contacta al administrador."
+      }`,
+      referenceId: event.params.businessId,
+    });
+  },
+);
 
 exports.expireMarketplaceProducts = onSchedule(
   {
@@ -48,6 +217,14 @@ exports.expireMarketplaceProducts = onSchedule(
               throw new Error(`Invalid sellerUid on product ${product.id}`);
             }
 
+            await notifyUser({
+              uid: sellerUid,
+              notificationId: `marketplace-expired-${product.id}`,
+              type: "marketplace_expired",
+              title: "Tu publicación de Marketplace venció",
+              body: `${product.get("name") || "Tu producto"} se eliminó después de cinco días.`,
+              referenceId: product.id,
+            });
             await bucket.deleteFiles({
               prefix: `marketplace/${sellerUid}/${product.id}/`,
             });

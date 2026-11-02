@@ -40,6 +40,8 @@ service cloud.firestore {
         || (userIsActive()
           && isRegisteredUser()
           && request.resource.data.status == 'pending'
+          && request.resource.data.get('listingType', 'business')
+            in ['business', 'service']
           && request.resource.data.createdBy == request.auth.uid);
       allow update: if isAdmin()
         && (!(resource.data.status != 'approved'
@@ -87,6 +89,31 @@ service cloud.firestore {
           && isRegisteredUser()
           && request.auth.uid == userId;
       }
+
+      match /notification_tokens/{tokenId} {
+        allow read: if signedIn() && request.auth.uid == userId;
+        allow create, update: if userIsActive()
+          && isRegisteredUser()
+          && request.auth.uid == userId
+          && request.resource.data.keys().hasOnly([
+            'token', 'platform', 'updatedAt'
+          ])
+          && request.resource.data.token is string
+          && request.resource.data.platform is string
+          && request.resource.data.updatedAt == request.time;
+        allow delete: if signedIn() && request.auth.uid == userId;
+      }
+
+      match /notifications/{notificationId} {
+        allow read: if signedIn() && request.auth.uid == userId;
+        allow update: if signedIn()
+          && request.auth.uid == userId
+          && request.resource.data.diff(resource.data).affectedKeys()
+            .hasOnly(['readAt'])
+          && request.resource.data.readAt == request.time;
+        allow create, delete: if false;
+      }
+
     }
 
     match /municipal_events/{eventId} {

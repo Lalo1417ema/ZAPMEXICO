@@ -1,3 +1,4 @@
+import 'dart:convert';
 import 'dart:io';
 import 'dart:async';
 
@@ -8,6 +9,7 @@ import 'package:google_sign_in/google_sign_in.dart';
 import 'package:local_auth/local_auth.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:firebase_storage/firebase_storage.dart';
+import 'package:firebase_messaging/firebase_messaging.dart';
 
 class AuthProvider extends ChangeNotifier {
   final FirebaseAuth _auth = FirebaseAuth.instance;
@@ -345,6 +347,27 @@ class AuthProvider extends ChangeNotifier {
   }
 
   Future<void> logout() async {
+    final firebaseUser = _auth.currentUser;
+    if (!kIsWeb && firebaseUser != null && !firebaseUser.isAnonymous) {
+      try {
+        final token = await FirebaseMessaging.instance.getToken();
+        if (token != null) {
+          final tokenId = base64Url
+              .encode(utf8.encode(token))
+              .replaceAll('=', '');
+          await _firestore
+              .collection('users')
+              .doc(firebaseUser.uid)
+              .collection('notification_tokens')
+              .doc(tokenId)
+              .delete();
+        }
+        await FirebaseMessaging.instance.deleteToken();
+      } on Exception catch (error) {
+        debugPrint('No se pudo retirar el dispositivo de notificaciones: $error');
+      }
+    }
+
     await _auth.signOut();
 
     try {

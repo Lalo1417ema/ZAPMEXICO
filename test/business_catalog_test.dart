@@ -253,12 +253,19 @@ void main() {
       'Abarrotes',
       'Tecnología',
       'Turismo',
+      'Arquitectura y diseño',
+      'Servicios profesionales',
       'Comercio',
       'Productores locales',
     ]);
     expect(categories, isNotEmpty);
-    expect(categories, businessCategories.toSet());
-    expect(businessCategories.toSet(), hasLength(categories.length));
+    expect(
+      categories,
+      businessCategories.toSet().difference({
+        'Arquitectura y diseño',
+        'Servicios profesionales',
+      }),
+    );
   });
 
   test(

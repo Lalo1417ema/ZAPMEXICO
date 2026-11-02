@@ -40,6 +40,7 @@ class _BusinessRequestScreenState extends State<BusinessRequestScreen> {
   String selectedMunicipality = regionMunicipalities.first;
   bool requestNewCategory = false;
   bool requestNewMunicipality = false;
+  String listingType = 'business';
   final ImagePicker imagePicker = ImagePicker();
   File? selectedLogoImage;
   final List<File> selectedGalleryImages = [];
@@ -124,9 +125,10 @@ class _BusinessRequestScreenState extends State<BusinessRequestScreen> {
     final provider = Provider.of<BusinessProvider>(context);
     final auth = context.watch<AuthProvider>();
     final isAdmin = auth.isAdmin;
+    final isService = listingType == 'service';
     if (auth.isVisitor) {
       return Scaffold(
-        appBar: AppBar(title: const Text('Registrar negocio')),
+        appBar: AppBar(title: const Text('Registrar negocio o servicio')),
         body: Center(
           child: Padding(
             padding: const EdgeInsets.all(24),
@@ -136,7 +138,7 @@ class _BusinessRequestScreenState extends State<BusinessRequestScreen> {
                 const Icon(Icons.lock_outline, size: 56),
                 const SizedBox(height: 16),
                 const Text(
-                  'Necesitas una cuenta para registrar un negocio.',
+                  'Necesitas una cuenta para registrar un negocio o servicio.',
                   textAlign: TextAlign.center,
                 ),
                 const SizedBox(height: 16),
@@ -162,23 +164,53 @@ class _BusinessRequestScreenState extends State<BusinessRequestScreen> {
 
     return Scaffold(
       appBar: AppBar(
-        title: Text(isAdmin ? 'Agregar negocio' : 'Solicitud de registro'),
+        title: Text(
+          isAdmin
+              ? (isService ? 'Agregar prestador' : 'Agregar negocio')
+              : (isService ? 'Registro de prestador' : 'Solicitud de registro'),
+        ),
       ),
       body: SingleChildScrollView(
         padding: const EdgeInsets.all(16),
         child: Column(
           children: [
             const SizedBox(height: 20),
+            DropdownButtonFormField<String>(
+              initialValue: listingType,
+              decoration: const InputDecoration(
+                labelText: '¿Qué deseas registrar?',
+                border: OutlineInputBorder(),
+              ),
+              items: const [
+                DropdownMenuItem(value: 'business', child: Text('Negocio')),
+                DropdownMenuItem(
+                  value: 'service',
+                  child: Text('Prestador de servicios'),
+                ),
+              ],
+              onChanged: isSubmitting
+                  ? null
+                  : (value) {
+                      if (value != null) {
+                        setState(() => listingType = value);
+                      }
+                    },
+            ),
+            const SizedBox(height: 14),
             CustomTextField(
-              hint: 'NOMBRE DEL NEGOCIO',
+              hint: isService
+                  ? 'NOMBRE DEL PROFESIONAL / SERVICIO'
+                  : 'NOMBRE DEL NEGOCIO',
               controller: nameController,
-              icon: Icons.store,
+              icon: isService ? Icons.engineering : Icons.store,
             ),
 
             const SizedBox(height: 14),
 
             CustomTextField(
-              hint: 'NOMBRE DEL ENCARGADO',
+              hint: isService
+                  ? 'PROFESIÓN / ACREDITACIÓN (OPCIONAL)'
+                  : 'NOMBRE DEL ENCARGADO',
               controller: ownerController,
               icon: Icons.person,
             ),
@@ -214,7 +246,7 @@ class _BusinessRequestScreenState extends State<BusinessRequestScreen> {
                   ? selectedMunicipality
                   : null,
               decoration: const InputDecoration(
-                labelText: 'Municipio de Michoacán',
+                labelText: 'Municipio donde ofrece atención',
                 prefixIcon: Icon(Icons.location_on),
                 border: OutlineInputBorder(),
               ),
@@ -252,7 +284,7 @@ class _BusinessRequestScreenState extends State<BusinessRequestScreen> {
             const SizedBox(height: 14),
 
             CustomTextField(
-              hint: 'DIRECCIÓN',
+              hint: isService ? 'DIRECCIÓN (OPCIONAL)' : 'DIRECCIÓN',
               controller: addressController,
               icon: Icons.location_on,
             ),
@@ -260,7 +292,9 @@ class _BusinessRequestScreenState extends State<BusinessRequestScreen> {
             const SizedBox(height: 14),
 
             CustomTextField(
-              hint: 'HORARIO',
+              hint: isService
+                  ? 'HORARIO / DISPONIBILIDAD (OPCIONAL)'
+                  : 'HORARIO',
               controller: scheduleController,
               icon: Icons.access_time,
             ),
@@ -280,7 +314,11 @@ class _BusinessRequestScreenState extends State<BusinessRequestScreen> {
                       : (categories.contains(selectedCategory)
                             ? selectedCategory
                             : null),
-                  hint: const Text('Selecciona una categoría disponible'),
+                  hint: Text(
+                    isService
+                        ? 'Selecciona una profesión o especialidad'
+                        : 'Selecciona una categoría disponible',
+                  ),
                   dropdownColor: AppColors.surface,
                   isExpanded: true,
                   items: categories.map((cat) {
@@ -350,7 +388,9 @@ class _BusinessRequestScreenState extends State<BusinessRequestScreen> {
             Align(
               alignment: Alignment.centerLeft,
               child: Text(
-                'Logo del negocio (opcional)',
+                isService
+                    ? 'Foto profesional o logo (opcional)'
+                    : 'Logo del negocio (opcional)',
                 style: Theme.of(context).textTheme.titleMedium,
               ),
             ),
@@ -441,9 +481,11 @@ class _BusinessRequestScreenState extends State<BusinessRequestScreen> {
                         nameController.text,
                         phoneController.text,
                         municipality,
-                        addressController.text,
-                        scheduleController.text,
                         descriptionController.text,
+                        if (!isService) ...[
+                          addressController.text,
+                          scheduleController.text,
+                        ],
                       ];
                       if (requiredFields.any((value) => value.trim().isEmpty) ||
                           category.isEmpty) {
@@ -475,6 +517,7 @@ class _BusinessRequestScreenState extends State<BusinessRequestScreen> {
                             {'type': 'category', 'value': category},
                         ];
                         await provider.submitBusinessRequest(
+                          listingType: listingType,
                           name: nameController.text.trim(),
                           owner: ownerController.text.trim(),
                           email: emailController.text.trim(),
@@ -498,8 +541,12 @@ class _BusinessRequestScreenState extends State<BusinessRequestScreen> {
                           SnackBar(
                             content: Text(
                               isAdmin
-                                  ? 'Ficha creada. Quedó pendiente de aprobación.'
-                                  : 'Solicitud enviada correctamente',
+                                  ? (isService
+                                        ? 'Prestador creado. Quedó pendiente de aprobación.'
+                                        : 'Ficha creada. Quedó pendiente de aprobación.')
+                                  : (isService
+                                        ? 'Solicitud de prestador enviada para aprobación.'
+                                        : 'Solicitud enviada correctamente'),
                             ),
                           ),
                         );

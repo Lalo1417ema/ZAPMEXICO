@@ -42,7 +42,7 @@ Los visitantes pueden explorar el directorio, pero deben crear una cuenta o inic
 
 No se puede asignar el rol desde la app: las reglas bloquean escrituras en `admins`. Los administradores pueden crear fichas desde **Agregar negocio**; se guardan automáticamente en Firestore con estado pendiente. Desde el panel pueden aprobar/rechazar solicitudes, modificar fichas y subir imágenes. El público solo puede leer negocios aprobados.
 
-Las solicitudes de usuarios también se guardan en Firestore y aparecen en la pestaña **Pendientes** para revisión. Al registrar un negocio se selecciona un municipio y categoría disponibles; si falta una opción, se puede proponer desde el formulario. Las propuestas quedan pendientes en **Catálogos**, junto al negocio que las originó, y solo se incorporan al catálogo cuando un administrador las aprueba. Las propuestas de municipios se validan contra la lista oficial de Michoacán. Al registrar un negocio se pueden seleccionar un logo y al menos tres fotos para su carrusel; el logo es opcional y, si no se carga, se usa la ilustración de categoría. Los archivos se guardan en Firebase Storage. Solo el propietario de una ficha pendiente puede subir sus imágenes; el administrador puede cambiar logo, fotos y datos. Para proteger la publicación, una ficha nueva no se puede aprobar hasta que tenga tres fotos.
+Las solicitudes de usuarios también se guardan en Firestore y aparecen en la pestaña **Pendientes** para revisión. El formulario permite registrar un negocio o un prestador de servicios. Los prestadores, como arquitectos, aparecen en el mismo directorio bajo el filtro **Servicios** y pasan por la misma aprobación administrativa; pueden dejar dirección, horario y logo vacíos. En ambas modalidades se selecciona un municipio y una categoría disponibles; si falta una opción, se puede proponer desde el formulario. Las propuestas quedan pendientes en **Catálogos**, junto a la ficha que las originó, y solo se incorporan al catálogo cuando un administrador las aprueba. Las propuestas de municipios se validan contra la lista oficial de Michoacán. Se requieren al menos tres fotos para el carrusel; el logo es opcional y, si no se carga, se usa una ilustración de categoría. Los archivos se guardan en Firebase Storage. Solo el propietario de una ficha pendiente puede subir sus imágenes; el administrador puede cambiar logo, fotos y datos. Para proteger la publicación, una ficha nueva no se puede aprobar hasta que tenga tres fotos.
 
 El panel también permite editar, agregar y ocultar eventos del carrusel por municipio, con imagen opcional y enlace de referencia. Los eventos existentes se conservan como contenido base y se pueden sobrescribir u ocultar. En **Bloqueos**, el administrador puede bloquear/desbloquear negocios (se ocultan del directorio) y usuarios (se suspende el uso de la app). Vuelve a desplegar `firestore.rules` y `storage.rules` después de cualquier cambio en esos archivos. Las reglas de Firestore incluyen lecturas públicas de catálogos, altas de propuestas ligadas al negocio enviado y escrituras administrativas para su aprobación.
 
@@ -66,6 +66,18 @@ firebase deploy --only functions,firestore:rules,storage --project zap2026-382a1
 
 Las funciones programadas requieren que el proyecto tenga facturación de Google Cloud habilitada.
 
+### Prestadores y notificaciones
+
+En **Registrar negocio o servicio**, selecciona **Prestador de servicios** para publicar a un profesional (por ejemplo, arquitectura y diseño). Los prestadores usan la misma revisión administrativa que los negocios; se puede proponer una profesión/categoría si no existe. Dirección, horario y logo son opcionales para prestadores. Los anuncios aprobados se encuentran en el directorio con los filtros **Negocios** y **Servicios**.
+
+La app guarda una bandeja de notificaciones por usuario. Cloud Functions la alimenta al recibir nuevas solicitudes, al aprobar/rechazar una ficha y al eliminar un producto vencido de Marketplace. También envía push a dispositivos registrados. Para activarlas en producción, publica reglas y funciones:
+
+```sh
+firebase deploy --only firestore:rules,functions --project zap2026-382a1
+```
+
+En Android se pide permiso para notificaciones al iniciar sesión y los avisos push se muestran también con la app abierta. En iOS debe estar configurada la clave APNs en Firebase Console para la app iOS. En web la bandeja funciona sin configuración adicional; para push del navegador, habilita Firebase Cloud Messaging, configura una clave VAPID y ejecuta la app compilada con `--dart-define=FCM_WEB_VAPID_KEY=<clave-publica-vapid>`. El worker web está en `web/firebase-messaging-sw.js`.
+
 ## Ejecutar
 
 ```sh
@@ -79,3 +91,29 @@ flutter run
 flutter analyze
 flutter test
 ```
+
+## Firma estable de APK en GitHub Actions
+
+El workflow de Android requiere una keystore estable para que las siguientes versiones se firmen con el mismo certificado. Crea la keystore en un lugar seguro y conserva una copia de respaldo; no la subas al repositorio ni la compartas. En Windows, desde la raíz del proyecto:
+
+```powershell
+keytool -genkeypair -v -keystore android\app\upload-keystore.jks -keyalg RSA -keysize 2048 -validity 10000 -alias zapmexico
+```
+
+Usa una contraseña segura cuando `keytool` la solicite. Obtén la huella SHA-1 del certificado:
+
+```powershell
+keytool -list -v -keystore android\app\upload-keystore.jks -alias zapmexico
+```
+
+Agrega esa SHA-1 en Firebase Console, en la app Android `mx.tecnm.cdhidalgo.zap_mexico`. Luego crea estos cuatro **Actions secrets** en GitHub (`Settings > Secrets and variables > Actions`):
+
+- `ANDROID_KEYSTORE_BASE64`: contenido de la keystore codificado en Base64. En PowerShell, copia el resultado directamente al portapapeles con:
+  ```powershell
+  [Convert]::ToBase64String([IO.File]::ReadAllBytes("android\app\upload-keystore.jks")) | Set-Clipboard
+  ```
+- `ANDROID_KEY_ALIAS`: `zapmexico`
+- `ANDROID_KEY_PASSWORD`: contraseña de la clave
+- `ANDROID_STORE_PASSWORD`: contraseña de la keystore
+
+Después de guardar los secretos, ejecuta el workflow **Build APK** y descarga el nuevo artifact. No registres la SHA-1 de un APK firmado con `debug`: el workflow dejará de usar esa firma temporal. La nueva keystore debe guardarse en un respaldo seguro; si se pierde, no se podrán firmar actualizaciones compatibles con esta app. Los APK actuales firmados con otra clave podrían requerir desinstalarse antes de instalar el nuevo, lo que elimina sus datos locales.

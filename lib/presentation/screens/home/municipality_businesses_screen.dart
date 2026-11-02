@@ -31,6 +31,7 @@ class _MunicipalityBusinessesScreenState
     extends State<MunicipalityBusinessesScreen> {
   final searchController = TextEditingController();
   String selectedCategory = 'Todos';
+  String selectedListingType = 'all';
   String? _loadedEventsMunicipality;
   bool _catalogsReady = false;
 
@@ -136,13 +137,18 @@ class _MunicipalityBusinessesScreenState
       final matchesCategory =
           selectedCategory == 'Todos' ||
           business['category'] == selectedCategory;
+      final listingType = business['listingType'] == 'service'
+          ? 'service'
+          : 'business';
+      final matchesListingType =
+          selectedListingType == 'all' || listingType == selectedListingType;
       final matchesSearch =
           query.isEmpty ||
           (business['name'] ?? '').toString().toLowerCase().contains(query) ||
           (business['description'] ?? '').toString().toLowerCase().contains(
             query,
           );
-      return matchesCategory && matchesSearch;
+      return matchesListingType && matchesCategory && matchesSearch;
     }).toList();
 
     return Scaffold(
@@ -202,6 +208,41 @@ class _MunicipalityBusinessesScreenState
           const SliverToBoxAdapter(child: SizedBox(height: 14)),
           SliverToBoxAdapter(
             child: SizedBox(
+              height: 42,
+              child: ListView(
+                padding: const EdgeInsets.symmetric(horizontal: 16),
+                scrollDirection: Axis.horizontal,
+                children:
+                    const [
+                      ('all', 'Todos'),
+                      ('business', 'Negocios'),
+                      ('service', 'Servicios'),
+                    ].map((option) {
+                      final isSelected = selectedListingType == option.$1;
+                      return Padding(
+                        padding: const EdgeInsets.only(right: 8),
+                        child: ChoiceChip(
+                          label: Text(option.$2),
+                          selected: isSelected,
+                          selectedColor: AppColors.primary,
+                          backgroundColor: AppColors.surface,
+                          labelStyle: TextStyle(
+                            color: isSelected
+                                ? Colors.white
+                                : AppColors.greyText,
+                          ),
+                          onSelected: (_) {
+                            setState(() => selectedListingType = option.$1);
+                          },
+                        ),
+                      );
+                    }).toList(),
+              ),
+            ),
+          ),
+          const SliverToBoxAdapter(child: SizedBox(height: 8)),
+          SliverToBoxAdapter(
+            child: SizedBox(
               height: 45,
               child: ListView(
                 padding: const EdgeInsets.symmetric(horizontal: 16),
@@ -241,7 +282,7 @@ class _MunicipalityBusinessesScreenState
               hasScrollBody: false,
               child: Center(
                 child: Text(
-                  'No se encontraron negocios con estos filtros.',
+                  'No se encontraron publicaciones con estos filtros.',
                   textAlign: TextAlign.center,
                   style: TextStyle(color: AppColors.greyText),
                 ),
@@ -262,6 +303,8 @@ class _MunicipalityBusinessesScreenState
                         : null,
                     imageIsIllustrative:
                         business['imageIsIllustrative'] == true,
+                    listingType: (business['listingType'] ?? 'business')
+                        .toString(),
                     rating: ((business['rating'] ?? 0) as num).toDouble(),
                     onTap: () => Navigator.pushNamed(
                       context,

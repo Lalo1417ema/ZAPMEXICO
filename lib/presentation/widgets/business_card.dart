@@ -9,6 +9,7 @@ class BusinessCard extends StatelessWidget {
   final String imageUrl;
   final Uint8List? imageBytes;
   final bool imageIsIllustrative;
+  final String listingType;
   final double rating;
   final VoidCallback onTap;
 
@@ -19,6 +20,7 @@ class BusinessCard extends StatelessWidget {
     required this.imageUrl,
     this.imageBytes,
     this.imageIsIllustrative = false,
+    this.listingType = 'business',
     required this.rating,
     required this.onTap,
   });
@@ -113,6 +115,18 @@ class BusinessCard extends StatelessWidget {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
+                  if (listingType == 'service')
+                    Padding(
+                      padding: const EdgeInsets.only(bottom: 4),
+                      child: Text(
+                        'PRESTADOR DE SERVICIOS',
+                        style: TextStyle(
+                          color: AppColors.primary,
+                          fontSize: 10,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                    ),
                   Text(
                     title,
                     style: const TextStyle(

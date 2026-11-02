@@ -14,4 +14,5 @@ class AppRoutes {
   static const visitorSetup = '/visitor-setup';
   static const profile = '/profile';
   static const marketplace = '/marketplace';
+  static const notifications = '/notifications';
 }

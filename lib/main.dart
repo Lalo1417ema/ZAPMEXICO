@@ -1,8 +1,10 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:provider/provider.dart';
 import 'package:zap_mexico/presentation/screens/home/favorites_screen.dart';
 
 import 'package:firebase_core/firebase_core.dart';
+import 'package:firebase_messaging/firebase_messaging.dart';
 import 'firebase_options.dart';
 
 import 'core/theme/app_theme.dart';
@@ -14,6 +16,7 @@ import 'presentation/providers/admin_provider.dart';
 import 'presentation/providers/municipal_event_provider.dart';
 import 'presentation/providers/catalog_provider.dart';
 import 'presentation/providers/marketplace_provider.dart';
+import 'presentation/providers/notification_provider.dart';
 
 import 'presentation/screens/auth/login_screen.dart';
 import 'presentation/screens/auth/visitor_setup_screen.dart';
@@ -27,6 +30,7 @@ import 'presentation/screens/home/business_detail_screen.dart';
 import 'presentation/screens/home/business_request_screen.dart';
 import 'presentation/screens/home/municipality_businesses_screen.dart';
 import 'presentation/screens/home/marketplace_screen.dart';
+import 'presentation/screens/home/notifications_screen.dart';
 import 'presentation/screens/admin/admin_dashboard_screen.dart';
 import 'presentation/screens/admin/monetization_mock_screen.dart';
 
@@ -39,6 +43,9 @@ Future<void> main() async {
 
   // 2. Inicializa Firebase antes de correr la app
   await Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform);
+  if (!kIsWeb) {
+    FirebaseMessaging.onBackgroundMessage(firebaseMessagingBackgroundHandler);
+  }
 
   runApp(const ZapMexicoApp());
 }
@@ -56,8 +63,11 @@ class ZapMexicoApp extends StatelessWidget {
         ChangeNotifierProvider(create: (_) => MunicipalEventProvider()),
         ChangeNotifierProvider(create: (_) => CatalogProvider()),
         ChangeNotifierProvider(create: (_) => MarketplaceProvider()),
+        ChangeNotifierProvider(create: (_) => NotificationProvider()),
       ],
       child: MaterialApp(
+        navigatorKey: notificationNavigatorKey,
+        scaffoldMessengerKey: notificationScaffoldMessengerKey,
         debugShowCheckedModeBanner: false,
         theme: AppTheme.darkTheme,
         home: const LoginScreen(),
@@ -72,6 +82,7 @@ class ZapMexicoApp extends StatelessWidget {
           AppRoutes.register: (_) => const RegisterScreen(),
           AppRoutes.profile: (_) => const ProfileScreen(),
           AppRoutes.marketplace: (_) => const MarketplaceScreen(),
+          AppRoutes.notifications: (_) => const NotificationsScreen(),
           AppRoutes.forgotPassword: (_) => const ForgotPasswordScreen(),
           AppRoutes.resetPassword: (_) => const ResetPasswordScreen(),
           AppRoutes.municipalityBusinesses: (_) =>

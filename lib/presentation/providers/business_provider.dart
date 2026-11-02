@@ -130,6 +130,7 @@ class BusinessProvider extends ChangeNotifier {
   }
 
   Future<String> submitBusinessRequest({
+    String listingType = 'business',
     required String name,
     required String owner,
     required String email,
@@ -148,14 +149,19 @@ class BusinessProvider extends ChangeNotifier {
     CatalogProvider? catalogProvider,
     List<Map<String, String>> catalogSuggestions = const [],
   }) async {
+    if (listingType != 'business' && listingType != 'service') {
+      throw ArgumentError('El tipo de publicación no es válido.');
+    }
     final firebaseConfigured = Firebase.apps.isNotEmpty;
     final requiredFields = {
       'nombre': name,
       'teléfono': phone,
       'municipio': city,
-      'dirección': address,
-      'horario': schedule,
       'descripción': description,
+      if (listingType == 'business') ...{
+        'dirección': address,
+        'horario': schedule,
+      },
     };
     final missingFields = requiredFields.entries
         .where((field) => field.value.trim().isEmpty)
@@ -194,6 +200,7 @@ class BusinessProvider extends ChangeNotifier {
     final now = DateTime.now();
     final business = <String, dynamic>{
       'id': businessId,
+      'listingType': listingType,
       'name': name.trim(),
       'owner': owner.trim(),
       'email': email.trim(),

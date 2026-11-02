@@ -7,6 +7,8 @@ const businessCategoryImageAssets = <String, String>{
   'Abarrotes': 'assets/images/business_categories/otro.jpg',
   'Tecnología': 'assets/images/business_categories/tecnologia.jpg',
   'Turismo': 'assets/images/business_categories/transporte.webp',
+  'Arquitectura y diseño': 'assets/images/business_categories/otro.jpg',
+  'Servicios profesionales': 'assets/images/business_categories/otro.jpg',
   'Comercio': 'assets/images/business_categories/otro.jpg',
   'Productores locales': 'assets/images/business_categories/otro.jpg',
 };

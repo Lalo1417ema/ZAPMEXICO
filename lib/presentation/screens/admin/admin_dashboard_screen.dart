@@ -114,7 +114,10 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             const SizedBox(height: 4),
-            Text('${business['category']} • ${business['city']}'),
+            Text(
+              '${business['listingType'] == 'service' ? 'Servicio' : 'Negocio'}'
+              ' • ${business['category']} • ${business['city']}',
+            ),
             const SizedBox(height: 6),
             Container(
               padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),

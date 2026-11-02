@@ -10,6 +10,8 @@ const businessCategories = [
   'Abarrotes',
   'Tecnología',
   'Turismo',
+  'Arquitectura y diseño',
+  'Servicios profesionales',
   'Comercio',
   'Productores locales',
 ];

@@ -5,6 +5,7 @@ import 'package:firebase_core/firebase_core.dart';
 import '../../config/routes/app_routes.dart';
 import '../../core/constants/app_colors.dart';
 import '../providers/auth_provider.dart';
+import '../providers/notification_provider.dart';
 import 'registration_required_dialog.dart';
 
 class CustomDrawer extends StatefulWidget {
@@ -145,8 +146,34 @@ class _CustomDrawerState extends State<CustomDrawer> {
             ),
 
             ListTile(
+              leading: const Icon(Icons.notifications_outlined),
+              title: const Text('Notificaciones'),
+              trailing: Consumer<NotificationProvider>(
+                builder: (context, notifications, _) =>
+                    notifications.unreadCount == 0
+                    ? const SizedBox.shrink()
+                    : CircleAvatar(
+                        radius: 12,
+                        backgroundColor: AppColors.primary,
+                        child: Text(
+                          notifications.unreadCount > 99
+                              ? '99+'
+                              : notifications.unreadCount.toString(),
+                          style: const TextStyle(
+                            color: Colors.white,
+                            fontSize: 10,
+                          ),
+                        ),
+                      ),
+              ),
+              onTap: () {
+                Navigator.pushNamed(context, AppRoutes.notifications);
+              },
+            ),
+
+            ListTile(
               leading: const Icon(Icons.store),
-              title: const Text('Registrar negocio'),
+              title: const Text('Registrar negocio o servicio'),
 
               onTap: () {
                 if (auth.isVisitor) {

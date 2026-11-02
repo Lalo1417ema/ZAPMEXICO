@@ -25,7 +25,7 @@ class _BusinessDetailScreenState extends State<BusinessDetailScreen> {
   void initState() {
     super.initState();
     final businessProvider = context.read<BusinessProvider>();
-    
+
     // 👈 SOLUCIÓN: Usamos addPostFrameCallback para evitar conflictos de contexto en el initState
     WidgetsBinding.instance.addPostFrameCallback((_) {
       Future.microtask(() async {
@@ -128,6 +128,7 @@ class _BusinessDetailScreenState extends State<BusinessDetailScreen> {
         ? business['logoBytes'] as Uint8List
         : null;
     final String name = (business['name'] ?? 'Negocio').toString();
+    final isService = business['listingType'] == 'service';
     final String city = (business['city'] ?? 'Sin ciudad').toString();
     final String location = (business['location'] ?? city).toString();
     final String schedule = businessFieldValue(business, 'schedule');
@@ -221,6 +222,17 @@ class _BusinessDetailScreenState extends State<BusinessDetailScreen> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
+                  if (isService)
+                    const Padding(
+                      padding: EdgeInsets.only(bottom: 6),
+                      child: Text(
+                        'PRESTADOR DE SERVICIOS',
+                        style: TextStyle(
+                          color: AppColors.primary,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                    ),
                   // Envoltura en Row para poner el corazón junto al nombre
                   Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -333,16 +345,17 @@ class _BusinessDetailScreenState extends State<BusinessDetailScreen> {
 
                   const SizedBox(height: 12),
 
-                  Row(
-                    children: [
-                      const Icon(Icons.access_time, color: AppColors.primary),
-                      const SizedBox(width: 8),
-                      Text(
-                        schedule,
-                        style: const TextStyle(color: AppColors.greyText),
-                      ),
-                    ],
-                  ),
+                  if (schedule.isNotEmpty)
+                    Row(
+                      children: [
+                        const Icon(Icons.access_time, color: AppColors.primary),
+                        const SizedBox(width: 8),
+                        Text(
+                          schedule,
+                          style: const TextStyle(color: AppColors.greyText),
+                        ),
+                      ],
+                    ),
 
                   const SizedBox(height: 24),
 
