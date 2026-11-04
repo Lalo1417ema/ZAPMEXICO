@@ -21,6 +21,18 @@ val hasReleaseSigning = releaseSigningValues.any { !it.isNullOrBlank() }
 if (hasReleaseSigning && releaseSigningValues.any { it.isNullOrBlank() }) {
     throw GradleException("Android release signing environment is incomplete.")
 }
+if (
+    gradle.startParameter.taskNames.any { it.contains("release", ignoreCase = true) } &&
+    !hasReleaseSigning
+) {
+    throw GradleException(
+        "Android release builds require ANDROID_KEYSTORE_PATH, ANDROID_KEY_ALIAS, " +
+            "ANDROID_KEY_PASSWORD, and ANDROID_STORE_PASSWORD.",
+    )
+}
+if (hasReleaseSigning && !file(releaseKeystorePath!!).isFile) {
+    throw GradleException("Android release keystore does not exist: $releaseKeystorePath")
+}
 
 android {
     namespace = "mx.tecnm.cdhidalgo.zap_mexico"
@@ -50,7 +62,7 @@ android {
             create("release") {
                 keyAlias = releaseKeyAlias
                 keyPassword = releaseKeyPassword
-                storeFile = file(releaseKeystorePath!!)
+                storeFile = file(checkNotNull(releaseKeystorePath))
                 storePassword = releaseStorePassword
             }
         }
@@ -58,10 +70,8 @@ android {
 
     buildTypes {
         release {
-            signingConfig = if (hasReleaseSigning) {
-                signingConfigs.getByName("release")
-            } else {
-                signingConfigs.getByName("debug")
+            if (hasReleaseSigning) {
+                signingConfig = signingConfigs.getByName("release")
             }
         }
     }

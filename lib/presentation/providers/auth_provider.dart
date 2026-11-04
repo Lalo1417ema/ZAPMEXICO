@@ -3,6 +3,7 @@ import 'dart:io';
 import 'dart:async';
 
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:cloud_functions/cloud_functions.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/foundation.dart';
 import 'package:google_sign_in/google_sign_in.dart';
@@ -137,9 +138,12 @@ class AuthProvider extends ChangeNotifier {
     String? googleDisplayName;
     String? googleEmail;
     if (kIsWeb) {
-      result = await _auth.signInWithPopup(GoogleAuthProvider());
+      final googleProvider = GoogleAuthProvider()
+        ..setCustomParameters({'prompt': 'select_account'});
+      result = await _auth.signInWithPopup(googleProvider);
     } else {
       final googleSignIn = GoogleSignIn();
+      await googleSignIn.signOut();
       final googleUser = await googleSignIn.signIn();
       if (googleUser == null) return false;
       googleDisplayName = googleUser.displayName;
@@ -364,7 +368,9 @@ class AuthProvider extends ChangeNotifier {
         }
         await FirebaseMessaging.instance.deleteToken();
       } on Exception catch (error) {
-        debugPrint('No se pudo retirar el dispositivo de notificaciones: $error');
+        debugPrint(
+          'No se pudo retirar el dispositivo de notificaciones: $error',
+        );
       }
     }
 
@@ -377,6 +383,24 @@ class AuthProvider extends ChangeNotifier {
     } on Exception catch (error) {
       debugPrint('No se pudieron limpiar las preferencias biométricas: $error');
     }
+  }
+
+  Future<void> deleteAccount() async {
+    if (_auth.currentUser == null || isVisitor) {
+      throw StateError('Inicia sesión con una cuenta registrada.');
+    }
+
+    await FirebaseFunctions.instanceFor(
+      region: 'us-central1',
+    ).httpsCallable('deleteAccount').call();
+    await _auth.signOut();
+    if (!kIsWeb) {
+      await GoogleSignIn().signOut();
+    }
+
+    final preferences = await SharedPreferences.getInstance();
+    await preferences.remove(_biometricEnabledKey);
+    await preferences.remove(_biometricUserKey);
   }
 
   Future<void> resetPassword(String email) async {

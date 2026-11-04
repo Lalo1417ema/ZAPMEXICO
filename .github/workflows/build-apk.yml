@@ -1,4 +1,4 @@
-name: Build APK
+name: Build Android App Bundle
 
 on:
   push:
@@ -37,17 +37,21 @@ jobs:
               exit 1
             fi
           done
-          printf '%s' "$ANDROID_KEYSTORE_BASE64" | base64 --decode > android/app/upload-keystore.jks
+          printf '%s' "$ANDROID_KEYSTORE_BASE64" | base64 --decode > "$RUNNER_TEMP/upload-keystore.jks"
 
-      - name: Build signed APK
+      - name: Build signed Android App Bundle
         env:
-          ANDROID_KEYSTORE_PATH: android/app/upload-keystore.jks
+          ANDROID_KEYSTORE_PATH: ${{ runner.temp }}/upload-keystore.jks
           ANDROID_KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
           ANDROID_KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
           ANDROID_STORE_PASSWORD: ${{ secrets.ANDROID_STORE_PASSWORD }}
-        run: flutter build apk --release
+        run: flutter build appbundle --release
 
       - uses: actions/upload-artifact@v4
         with:
-          name: zap-mexico-apk
-          path: build/app/outputs/flutter-apk/app-release.apk
+          name: zap-mexico-aab
+          path: build/app/outputs/bundle/release/app-release.aab
+
+      - name: Remove temporary upload keystore
+        if: always()
+        run: rm -f "$RUNNER_TEMP/upload-keystore.jks"

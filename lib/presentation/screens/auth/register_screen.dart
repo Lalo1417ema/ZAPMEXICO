@@ -118,204 +118,254 @@ class _RegisterScreenState extends State<RegisterScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final municipalities = context.watch<CatalogProvider>().municipalities;
+
     return Scaffold(
       appBar: AppBar(
-        title: Text(isGoogleRegistration ? 'Completa tu cuenta' : 'Registro'),
+        title: Text(
+          isGoogleRegistration ? 'Completa tu cuenta' : 'Crear cuenta',
+        ),
         backgroundColor: Colors.transparent,
       ),
-      body: Padding(
-        padding: const EdgeInsets.all(24),
+      body: SafeArea(
+        top: false,
         child: SingleChildScrollView(
-          child: Column(
-            children: [
-              CustomTextField(
-                hint: 'NOMBRE',
-                icon: Icons.person,
-                controller: nameController,
-              ),
-              const SizedBox(height: 16),
-
-              if (!isGoogleRegistration) ...[
-                CustomTextField(
-                  hint: 'USUARIO',
-                  icon: Icons.account_circle,
-                  controller: userController,
-                ),
-                const SizedBox(height: 16),
-              ],
-
-              CustomTextField(
-                hint: 'CORREO',
-                icon: Icons.email,
-                controller: emailController,
-                keyboardType: TextInputType.emailAddress,
-                readOnly: isGoogleRegistration,
-              ),
-              const SizedBox(height: 16),
-
-              if (!isGoogleRegistration) ...[
-                CustomTextField(
-                  hint: 'CONTRASEÑA',
-                  icon: Icons.lock,
-                  controller: passController,
-                  obscureText: true,
-                ),
-                const SizedBox(height: 16),
-
-                CustomTextField(
-                  hint: 'CONFIRMAR CONTRASEÑA',
-                  icon: Icons.lock_outline,
-                  controller: confirmController,
-                  obscureText: true,
-                ),
-              ],
-              CustomTextField(
-                hint: 'TELÉFONO',
-                icon: Icons.phone,
-                controller: phoneController,
-              ),
-
-              SizedBox(height: 16),
-
-              if (isGoogleRegistration)
-                DropdownButtonFormField<String>(
-                  initialValue: selectedGoogleMunicipality,
-                  isExpanded: true,
-                  decoration: const InputDecoration(
-                    labelText: 'MUNICIPIO',
-                    prefixIcon: Icon(Icons.location_city),
-                    border: OutlineInputBorder(),
+          padding: const EdgeInsets.fromLTRB(20, 12, 20, 32),
+          child: Center(
+            child: ConstrainedBox(
+              constraints: const BoxConstraints(maxWidth: 520),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  const SizedBox(height: 8),
+                  Icon(
+                    isGoogleRegistration
+                        ? Icons.account_circle_outlined
+                        : Icons.person_add_alt_1,
+                    size: 52,
+                    color: Theme.of(context).colorScheme.primary,
                   ),
-                  hint: const Text('Selecciona tu municipio'),
-                  items: context
-                      .watch<CatalogProvider>()
-                      .municipalities
-                      .map(
-                        (municipality) => DropdownMenuItem(
-                          value: municipality,
-                          child: Text(municipality),
-                        ),
-                      )
-                      .toList(),
-                  onChanged: (municipality) {
-                    setState(() => selectedGoogleMunicipality = municipality);
-                  },
-                )
-              else
-                CustomTextField(
-                  hint: 'CIUDAD',
-                  icon: Icons.location_city,
-                  controller: cityController,
-                ),
-
-              const SizedBox(height: 30),
-
-              CustomButton(
-                text: isGoogleRegistration ? 'CONTINUAR' : 'REGISTRARSE',
-                isLoading: isLoading,
-                onPressed: () async {
-                  if (nameController.text.trim().isEmpty ||
-                      emailController.text.trim().isEmpty ||
-                      (!isGoogleRegistration && passController.text.isEmpty) ||
-                      (isGoogleRegistration
-                          ? selectedGoogleMunicipality == null
-                          : cityController.text.trim().isEmpty)) {
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      SnackBar(
-                        content: Text(
-                          isGoogleRegistration
-                              ? 'Completa nombre, correo y ciudad.'
-                              : 'Completa nombre, correo, contraseña y ciudad.',
-                        ),
+                  const SizedBox(height: 12),
+                  Text(
+                    isGoogleRegistration ? 'Un paso más' : 'Únete a Zap México',
+                    textAlign: TextAlign.center,
+                    style: Theme.of(context).textTheme.headlineSmall?.copyWith(
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  Text(
+                    isGoogleRegistration
+                        ? 'Completa tus datos para encontrar negocios cerca de ti.'
+                        : 'Crea tu cuenta para descubrir y guardar negocios locales.',
+                    textAlign: TextAlign.center,
+                    style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                      color: Theme.of(context).colorScheme.onSurfaceVariant,
+                    ),
+                  ),
+                  const SizedBox(height: 28),
+                  _sectionLabel(context, 'Tus datos'),
+                  const SizedBox(height: 12),
+                  CustomTextField(
+                    hint: 'Nombre completo',
+                    icon: Icons.person_outline,
+                    controller: nameController,
+                    keyboardType: TextInputType.name,
+                  ),
+                  if (!isGoogleRegistration) ...[
+                    const SizedBox(height: 14),
+                    CustomTextField(
+                      hint: 'Nombre de usuario',
+                      icon: Icons.alternate_email,
+                      controller: userController,
+                    ),
+                  ],
+                  const SizedBox(height: 14),
+                  CustomTextField(
+                    hint: 'Correo electrónico',
+                    icon: Icons.email_outlined,
+                    controller: emailController,
+                    keyboardType: TextInputType.emailAddress,
+                    readOnly: isGoogleRegistration,
+                  ),
+                  if (!isGoogleRegistration) ...[
+                    const SizedBox(height: 14),
+                    CustomTextField(
+                      hint: 'Contraseña',
+                      icon: Icons.lock_outline,
+                      controller: passController,
+                      obscureText: true,
+                    ),
+                    const SizedBox(height: 14),
+                    CustomTextField(
+                      hint: 'Confirmar contraseña',
+                      icon: Icons.lock_reset,
+                      controller: confirmController,
+                      obscureText: true,
+                    ),
+                  ],
+                  const SizedBox(height: 14),
+                  CustomTextField(
+                    hint: 'Teléfono (opcional)',
+                    icon: Icons.phone_outlined,
+                    controller: phoneController,
+                    keyboardType: TextInputType.phone,
+                  ),
+                  const SizedBox(height: 24),
+                  _sectionLabel(context, 'Tu ubicación'),
+                  const SizedBox(height: 12),
+                  if (isGoogleRegistration)
+                    DropdownButtonFormField<String>(
+                      initialValue: selectedGoogleMunicipality,
+                      isExpanded: true,
+                      decoration: const InputDecoration(
+                        labelText: 'Municipio',
+                        prefixIcon: Icon(Icons.location_city),
+                        border: OutlineInputBorder(),
                       ),
-                    );
-                    return;
-                  }
-                  if (!isGoogleRegistration &&
-                      passController.text != confirmController.text) {
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(
-                        content: Text('Las contraseñas no coinciden.'),
-                      ),
-                    );
-                    return;
-                  }
-                  setState(() => isLoading = true);
-                  final auth = Provider.of<AuthProvider>(
-                    context,
-                    listen: false,
-                  );
-
-                  try {
-                    if (isGoogleRegistration) {
-                      await auth.completeGoogleProfile(
-                        name: nameController.text.trim(),
-                        phone: phoneController.text.trim(),
-                        city: selectedGoogleMunicipality!,
-                      );
-                      await _offerBiometricLogin(auth);
-                    } else {
-                      await auth.register(
-                        name: nameController.text.trim(),
-                        username: userController.text.trim(),
-                        email: emailController.text.trim(),
-                        password: passController.text,
-                        phone: phoneController.text.trim(),
-                        city: cityController.text.trim(),
-                      );
-                    }
-                    if (!context.mounted) return;
-                    if (isGoogleRegistration) {
-                      final municipality = selectedGoogleMunicipality!;
-                      Navigator.pushNamedAndRemoveUntil(
+                      hint: const Text('Selecciona tu municipio'),
+                      items: municipalities
+                          .map(
+                            (municipality) => DropdownMenuItem(
+                              value: municipality,
+                              child: Text(
+                                municipality,
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                            ),
+                          )
+                          .toList(),
+                      onChanged: (municipality) {
+                        setState(
+                          () => selectedGoogleMunicipality = municipality,
+                        );
+                      },
+                    )
+                  else
+                    CustomTextField(
+                      hint: 'Ciudad o municipio',
+                      icon: Icons.location_city_outlined,
+                      controller: cityController,
+                    ),
+                  const SizedBox(height: 28),
+                  CustomButton(
+                    text: isGoogleRegistration ? 'CONTINUAR' : 'CREAR CUENTA',
+                    isLoading: isLoading,
+                    onPressed: () async {
+                      if (nameController.text.trim().isEmpty ||
+                          emailController.text.trim().isEmpty ||
+                          (!isGoogleRegistration &&
+                              passController.text.isEmpty) ||
+                          (isGoogleRegistration
+                              ? selectedGoogleMunicipality == null
+                              : cityController.text.trim().isEmpty)) {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          SnackBar(
+                            content: Text(
+                              isGoogleRegistration
+                                  ? 'Completa nombre, correo y ciudad.'
+                                  : 'Completa nombre, correo, contraseña y ciudad.',
+                            ),
+                          ),
+                        );
+                        return;
+                      }
+                      if (!isGoogleRegistration &&
+                          passController.text != confirmController.text) {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          const SnackBar(
+                            content: Text('Las contraseñas no coinciden.'),
+                          ),
+                        );
+                        return;
+                      }
+                      setState(() => isLoading = true);
+                      final auth = Provider.of<AuthProvider>(
                         context,
-                        AppRoutes.municipalityBusinesses,
-                        (_) => false,
-                        arguments: {
-                          'municipality': municipality,
-                          'visitorName': nameController.text.trim(),
-                        },
+                        listen: false,
                       );
-                    } else {
-                      Navigator.pushReplacementNamed(
-                        context,
-                        auth.isAdmin
-                            ? AppRoutes.adminDashboard
-                            : AppRoutes.visitorSetup,
-                      );
-                    }
-                  } on FirebaseAuthException catch (error) {
-                    if (!context.mounted) return;
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      SnackBar(
-                        content: Text(
-                          error.message ?? 'No se pudo crear la cuenta.',
-                        ),
-                      ),
-                    );
-                  } on FirebaseException catch (error) {
-                    if (!context.mounted) return;
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      SnackBar(
-                        content: Text(
-                          error.message ?? 'No se pudo guardar el perfil.',
-                        ),
-                      ),
-                    );
-                  } on StateError catch (error) {
-                    if (!context.mounted) return;
-                    ScaffoldMessenger.of(
-                      context,
-                    ).showSnackBar(SnackBar(content: Text(error.message)));
-                  } finally {
-                    if (mounted) setState(() => isLoading = false);
-                  }
-                },
+
+                      try {
+                        if (isGoogleRegistration) {
+                          await auth.completeGoogleProfile(
+                            name: nameController.text.trim(),
+                            phone: phoneController.text.trim(),
+                            city: selectedGoogleMunicipality!,
+                          );
+                          await _offerBiometricLogin(auth);
+                        } else {
+                          await auth.register(
+                            name: nameController.text.trim(),
+                            username: userController.text.trim(),
+                            email: emailController.text.trim(),
+                            password: passController.text,
+                            phone: phoneController.text.trim(),
+                            city: cityController.text.trim(),
+                          );
+                        }
+                        if (!context.mounted) return;
+                        if (isGoogleRegistration) {
+                          final municipality = selectedGoogleMunicipality!;
+                          Navigator.pushNamedAndRemoveUntil(
+                            context,
+                            AppRoutes.municipalityBusinesses,
+                            (_) => false,
+                            arguments: {
+                              'municipality': municipality,
+                              'visitorName': nameController.text.trim(),
+                            },
+                          );
+                        } else {
+                          Navigator.pushReplacementNamed(
+                            context,
+                            auth.isAdmin
+                                ? AppRoutes.adminDashboard
+                                : AppRoutes.visitorSetup,
+                          );
+                        }
+                      } on FirebaseAuthException catch (error) {
+                        if (!context.mounted) return;
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          SnackBar(
+                            content: Text(
+                              error.message ?? 'No se pudo crear la cuenta.',
+                            ),
+                          ),
+                        );
+                      } on FirebaseException catch (error) {
+                        if (!context.mounted) return;
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          SnackBar(
+                            content: Text(
+                              error.message ?? 'No se pudo guardar el perfil.',
+                            ),
+                          ),
+                        );
+                      } on StateError catch (error) {
+                        if (!context.mounted) return;
+                        ScaffoldMessenger.of(
+                          context,
+                        ).showSnackBar(SnackBar(content: Text(error.message)));
+                      } finally {
+                        if (mounted) setState(() => isLoading = false);
+                      }
+                    },
+                  ),
+                ],
               ),
-            ],
+            ),
           ),
         ),
       ),
+    );
+  }
+
+  Widget _sectionLabel(BuildContext context, String label) {
+    return Text(
+      label,
+      style: Theme.of(
+        context,
+      ).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w600),
     );
   }
 }

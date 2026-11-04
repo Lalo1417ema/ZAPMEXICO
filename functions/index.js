@@ -2,10 +2,12 @@ const { initializeApp } = require("firebase-admin/app");
 const { getFirestore, Timestamp } = require("firebase-admin/firestore");
 const { getMessaging } = require("firebase-admin/messaging");
 const { getStorage } = require("firebase-admin/storage");
+const { getAuth } = require("firebase-admin/auth");
 const {
   onDocumentCreated,
   onDocumentUpdated,
 } = require("firebase-functions/v2/firestore");
+const { HttpsError, onCall } = require("firebase-functions/v2/https");
 const { onSchedule } = require("firebase-functions/v2/scheduler");
 const logger = require("firebase-functions/logger");
 
@@ -236,5 +238,91 @@ exports.expireMarketplaceProducts = onSchedule(
     }
 
     logger.info("Expired Marketplace listings removed", { totalDeleted });
+  },
+);
+
+exports.deleteAccount = onCall(
+  {
+    region: "us-central1",
+    timeoutSeconds: 540,
+    memory: "512MiB",
+  },
+  async (request) => {
+    const uid = request.auth?.uid;
+    if (!uid || request.auth.token.firebase?.sign_in_provider === "anonymous") {
+      throw new HttpsError(
+        "unauthenticated",
+        "Inicia sesión con una cuenta registrada para eliminarla.",
+      );
+    }
+
+    const businesses = db.collection("businesses");
+    while (true) {
+      const ownedBusinesses = await businesses
+        .where("createdBy", "==", uid)
+        .limit(batchSize)
+        .get();
+      if (ownedBusinesses.empty) break;
+
+      for (
+        let index = 0;
+        index < ownedBusinesses.docs.length;
+        index += parallelDeletes
+      ) {
+        const group = ownedBusinesses.docs.slice(index, index + parallelDeletes);
+        await Promise.all(
+          group.map(async (business) => {
+            const requests = db
+              .collection("catalog_requests")
+              .where("businessId", "==", business.id);
+            while (true) {
+              const relatedRequests = await requests.limit(batchSize).get();
+              if (relatedRequests.empty) break;
+              const requestBatch = db.batch();
+              relatedRequests.docs.forEach((document) =>
+                requestBatch.delete(document.ref),
+              );
+              await requestBatch.commit();
+            }
+
+            await bucket.deleteFiles({
+              prefix: `businesses/${business.id}/`,
+            });
+            await db.recursiveDelete(business.ref);
+          }),
+        );
+      }
+    }
+
+    const products = db
+      .collection("marketplace_products")
+      .where("sellerUid", "==", uid);
+    while (true) {
+      const ownedProducts = await products.limit(batchSize).get();
+      if (ownedProducts.empty) break;
+
+      for (
+        let index = 0;
+        index < ownedProducts.docs.length;
+        index += parallelDeletes
+      ) {
+        const group = ownedProducts.docs.slice(index, index + parallelDeletes);
+        await Promise.all(
+          group.map(async (product) => {
+            await bucket.deleteFiles({
+              prefix: `marketplace/${uid}/${product.id}/`,
+            });
+            await db.recursiveDelete(product.ref);
+          }),
+        );
+      }
+    }
+
+    await bucket.deleteFiles({ prefix: `user_profiles/${uid}/` });
+    await db.recursiveDelete(db.collection("users").doc(uid));
+    await db.collection("admins").doc(uid).delete();
+    await getAuth().deleteUser(uid);
+
+    return { deleted: true };
   },
 );

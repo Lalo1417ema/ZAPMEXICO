@@ -1,10 +1,12 @@
 import 'dart:io';
 
+import 'package:cloud_functions/cloud_functions.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:provider/provider.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 import '../../providers/auth_provider.dart';
 import '../../widgets/custom_button.dart';
@@ -25,6 +27,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
   File? _selectedImage;
   bool _initialized = false;
   bool _isSaving = false;
+  bool _isDeleting = false;
 
   @override
   void didChangeDependencies() {
@@ -97,6 +100,90 @@ class _ProfileScreenState extends State<ProfileScreen> {
     }
   }
 
+  Future<void> _deleteAccount() async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Eliminar cuenta'),
+        content: const Text(
+          'Se eliminarán permanentemente tu cuenta y perfil, tus favoritos, '
+          'notificaciones, negocios y publicaciones de Marketplace, así como '
+          'sus imágenes. Esta acción no se puede deshacer.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text('Cancelar'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.pop(context, true),
+            child: const Text('Eliminar cuenta'),
+          ),
+        ],
+      ),
+    );
+    if (confirmed != true || !mounted) return;
+
+    setState(() => _isDeleting = true);
+    try {
+      final messenger = ScaffoldMessenger.of(context);
+      await context.read<AuthProvider>().deleteAccount();
+      if (!mounted) return;
+      Navigator.of(context).popUntil((route) => route.isFirst);
+      messenger.showSnackBar(
+        const SnackBar(
+          content: Text('Tu cuenta y sus datos fueron eliminados.'),
+        ),
+      );
+    } on FirebaseFunctionsException catch (error) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(error.message ?? 'No se pudo eliminar la cuenta.'),
+        ),
+      );
+    } on FirebaseException catch (error) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(error.message ?? 'No se pudo eliminar la cuenta.'),
+        ),
+      );
+    } on StateError catch (error) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text(error.message)));
+    } finally {
+      if (mounted) setState(() => _isDeleting = false);
+    }
+  }
+
+  Future<void> _openPrivacyPolicy() async {
+    try {
+      final opened = await launchUrl(
+        Uri.parse('https://zap2026-382a1.web.app/privacy-policy.html'),
+        mode: LaunchMode.externalApplication,
+      );
+      if (!opened && mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('No se pudo abrir la política de privacidad.'),
+          ),
+        );
+      }
+    } on PlatformException catch (error) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            error.message ?? 'No se pudo abrir la política de privacidad.',
+          ),
+        ),
+      );
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final auth = context.watch<AuthProvider>();
@@ -104,9 +191,18 @@ class _ProfileScreenState extends State<ProfileScreen> {
       return Scaffold(
         appBar: AppBar(title: const Text('Mi perfil')),
         body: Center(
-          child: FilledButton(
-            onPressed: () => showRegistrationRequiredDialog(context),
-            child: const Text('Regístrate para personalizar tu perfil'),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              FilledButton(
+                onPressed: () => showRegistrationRequiredDialog(context),
+                child: const Text('Regístrate para personalizar tu perfil'),
+              ),
+              TextButton(
+                onPressed: _openPrivacyPolicy,
+                child: const Text('Política de privacidad'),
+              ),
+            ],
           ),
         ),
       );
@@ -169,8 +265,30 @@ class _ProfileScreenState extends State<ProfileScreen> {
           const SizedBox(height: 28),
           CustomButton(
             text: 'GUARDAR PERFIL',
-            isLoading: _isSaving,
+            isLoading: _isSaving || _isDeleting,
             onPressed: _saveProfile,
+          ),
+          const SizedBox(height: 24),
+          OutlinedButton.icon(
+            onPressed: _isSaving || _isDeleting ? null : _deleteAccount,
+            icon: _isDeleting
+                ? const SizedBox(
+                    width: 18,
+                    height: 18,
+                    child: CircularProgressIndicator(strokeWidth: 2),
+                  )
+                : const Icon(Icons.delete_forever_outlined),
+            label: Text(
+              _isDeleting ? 'ELIMINANDO CUENTA...' : 'ELIMINAR CUENTA',
+            ),
+            style: OutlinedButton.styleFrom(
+              foregroundColor: Theme.of(context).colorScheme.error,
+            ),
+          ),
+          const SizedBox(height: 8),
+          TextButton(
+            onPressed: _openPrivacyPolicy,
+            child: const Text('Política de privacidad'),
           ),
         ],
       ),

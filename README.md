@@ -92,7 +92,7 @@ flutter analyze
 flutter test
 ```
 
-## Firma estable de APK en GitHub Actions
+## Firma estable de Android App Bundle en GitHub Actions
 
 El workflow de Android requiere una keystore estable para que las siguientes versiones se firmen con el mismo certificado. Crea la keystore en un lugar seguro y conserva una copia de respaldo; no la subas al repositorio ni la compartas. En Windows, desde la raíz del proyecto:
 
@@ -100,7 +100,7 @@ El workflow de Android requiere una keystore estable para que las siguientes ver
 keytool -genkeypair -v -keystore android\app\upload-keystore.jks -keyalg RSA -keysize 2048 -validity 10000 -alias zapmexico
 ```
 
-Usa una contraseña segura cuando `keytool` la solicite. Obtén la huella SHA-1 del certificado:
+Guarda en un administrador de contraseñas las contraseñas que generes; no las subas al repositorio ni las compartas. La keystore está excluida de Git. Obtén la huella SHA-1 del certificado:
 
 ```powershell
 keytool -list -v -keystore android\app\upload-keystore.jks -alias zapmexico
@@ -116,4 +116,20 @@ Agrega esa SHA-1 en Firebase Console, en la app Android `mx.tecnm.cdhidalgo.zap_
 - `ANDROID_KEY_PASSWORD`: contraseña de la clave
 - `ANDROID_STORE_PASSWORD`: contraseña de la keystore
 
-Después de guardar los secretos, ejecuta el workflow **Build APK** y descarga el nuevo artifact. No registres la SHA-1 de un APK firmado con `debug`: el workflow dejará de usar esa firma temporal. La nueva keystore debe guardarse en un respaldo seguro; si se pierde, no se podrán firmar actualizaciones compatibles con esta app. Los APK actuales firmados con otra clave podrían requerir desinstalarse antes de instalar el nuevo, lo que elimina sus datos locales.
+Después de guardar los secretos, ejecuta el workflow **Build Android App Bundle** y descarga el artifact `zap-mexico-aab`. No registres la SHA-1 de un APK firmado con `debug`: el workflow exige los secretos y usa exclusivamente la keystore de subida. Conserva una copia segura de la keystore; si se pierde, no se podrán firmar actualizaciones compatibles con esta app. Con Play App Signing, registra también en Firebase la huella SHA-1 del certificado de firma de la app que muestra Play Console.
+
+## Eliminación de cuenta
+
+Las cuentas registradas pueden eliminarse desde **Mi perfil > Eliminar cuenta** o desde la página web:
+
+`https://zap2026-382a1.web.app/account-deletion.html`
+
+La solicitud elimina la cuenta de Firebase Authentication, el perfil y sus subcolecciones, la foto de perfil, los negocios del usuario, sus solicitudes de catálogo y sus publicaciones de Marketplace con las imágenes. La pantalla solicita confirmación porque la eliminación no se puede deshacer. Publica la función y la página cuando actualices el proyecto:
+
+```sh
+firebase deploy --only functions,hosting --project zap2026-382a1
+```
+
+Agrega la URL de eliminación de cuenta en la sección **Seguridad de los datos** de Play Console. La página web permite iniciar sesión con correo y contraseña o Google antes de solicitar el borrado.
+
+La política de privacidad pública está en `https://zap2026-382a1.web.app/privacy-policy.html`. Despliega Hosting antes de enviar la app y confirma que `zap2026-382a1.web.app` esté autorizado en **Firebase Authentication > Settings > Authorized domains** para el inicio de sesión web. Agrega la URL de la política en Play Console y revisa que sus declaraciones coincidan con el uso real de datos de la app.
