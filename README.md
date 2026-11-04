@@ -113,8 +113,8 @@ Agrega esa SHA-1 en Firebase Console, en la app Android `mx.tecnm.cdhidalgo.zap_
   [Convert]::ToBase64String([IO.File]::ReadAllBytes("android\app\upload-keystore.jks")) | Set-Clipboard
   ```
 - `ANDROID_KEY_ALIAS`: `zapmexico`
-- `ANDROID_KEY_PASSWORD`: contraseña de la clave
-- `ANDROID_STORE_PASSWORD`: contraseña de la keystore
+- `ANDROID_KEY_PASSWORD`: contraseña12345
+- `ANDROID_STORE_PASSWORD`: contraseña12345
 
 Después de guardar los secretos, ejecuta el workflow **Build Android App Bundle** y descarga el artifact `zap-mexico-aab`. No registres la SHA-1 de un APK firmado con `debug`: el workflow exige los secretos y usa exclusivamente la keystore de subida. Conserva una copia segura de la keystore; si se pierde, no se podrán firmar actualizaciones compatibles con esta app. Con Play App Signing, registra también en Firebase la huella SHA-1 del certificado de firma de la app que muestra Play Console.
 
