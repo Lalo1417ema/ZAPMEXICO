@@ -106,15 +106,10 @@ Guarda en un administrador de contraseñas las contraseñas que generes; no las 
 keytool -list -v -keystore android\app\upload-keystore.jks -alias zapmexico
 ```
 
-Agrega esa SHA-1 en Firebase Console, en la app Android `mx.tecnm.cdhidalgo.zap_mexico`. Luego crea estos cuatro **Actions secrets** en GitHub (`Settings > Secrets and variables > Actions`):
-
-- `ANDROID_KEYSTORE_BASE64`: contenido de la keystore codificado en Base64. En PowerShell, copia el resultado directamente al portapapeles con:
+Agrega esa SHA-1 en Firebase Console, en la app Android `mx.tecnm.cdhidalgo.zap_mexico`. Configura las credenciales de firma como **Actions secrets** en GitHub (`Settings > Secrets and variables > Actions`), usando los nombres que requiere el workflow. Para copiar el contenido codificado de la keystore al portapapeles en PowerShell:
   ```powershell
   [Convert]::ToBase64String([IO.File]::ReadAllBytes("android\app\upload-keystore.jks")) | Set-Clipboard
   ```
-- `ANDROID_KEY_ALIAS`: `zapmexico`
-- `ANDROID_KEY_PASSWORD`: contraseña12345
-- `ANDROID_STORE_PASSWORD`: contraseña12345
 
 Después de guardar los secretos, ejecuta el workflow **Build Android App Bundle** y descarga el artifact `zap-mexico-aab`. No registres la SHA-1 de un APK firmado con `debug`: el workflow exige los secretos y usa exclusivamente la keystore de subida. Conserva una copia segura de la keystore; si se pierde, no se podrán firmar actualizaciones compatibles con esta app. Con Play App Signing, registra también en Firebase la huella SHA-1 del certificado de firma de la app que muestra Play Console.
 
