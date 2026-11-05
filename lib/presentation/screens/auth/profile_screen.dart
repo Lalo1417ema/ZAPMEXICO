@@ -9,6 +9,7 @@ import 'package:provider/provider.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 import '../../providers/auth_provider.dart';
+import '../../providers/catalog_provider.dart';
 import '../../widgets/custom_button.dart';
 import '../../widgets/custom_text_field.dart';
 import '../../widgets/registration_required_dialog.dart';
@@ -25,6 +26,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
   final _usernameController = TextEditingController();
   final _imagePicker = ImagePicker();
   File? _selectedImage;
+  String? _selectedMunicipality;
   bool _initialized = false;
   bool _isSaving = false;
   bool _isDeleting = false;
@@ -35,8 +37,11 @@ class _ProfileScreenState extends State<ProfileScreen> {
     if (_initialized) return;
     _initialized = true;
     final profile = context.read<AuthProvider>().currentUserModel;
+    final municipalities = context.read<CatalogProvider>().municipalities;
     _nameController.text = profile?['name']?.toString() ?? '';
     _usernameController.text = profile?['username']?.toString() ?? '';
+    final city = profile?['city']?.toString();
+    if (municipalities.contains(city)) _selectedMunicipality = city;
   }
 
   @override
@@ -71,6 +76,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
       await context.read<AuthProvider>().updateProfile(
         name: _nameController.text,
         username: _usernameController.text,
+        municipality: _selectedMunicipality,
         profileImage: _selectedImage,
       );
       if (!mounted) return;
@@ -208,6 +214,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
       );
     }
     final profile = auth.currentUserModel;
+    final municipalities = context.watch<CatalogProvider>().municipalities;
     final photoUrl = profile?['photoUrl']?.toString() ?? '';
     ImageProvider<Object>? avatarImage;
     if (_selectedImage != null) {
@@ -225,16 +232,20 @@ class _ProfileScreenState extends State<ProfileScreen> {
             child: Stack(
               alignment: Alignment.bottomRight,
               children: [
-                CircleAvatar(
-                  radius: 58,
-                  backgroundImage: avatarImage,
-                  child: avatarImage == null
-                      ? const Icon(Icons.person, size: 64)
-                      : null,
+                InkWell(
+                  onTap: _isSaving ? null : _selectPhoto,
+                  customBorder: const CircleBorder(),
+                  child: CircleAvatar(
+                    radius: 58,
+                    backgroundImage: avatarImage,
+                    child: avatarImage == null
+                        ? const Icon(Icons.person, size: 64)
+                        : null,
+                  ),
                 ),
                 IconButton.filled(
                   tooltip: 'Cambiar foto',
-                  onPressed: _selectPhoto,
+                  onPressed: _isSaving ? null : _selectPhoto,
                   icon: const Icon(Icons.camera_alt),
                 ),
               ],
@@ -251,6 +262,32 @@ class _ProfileScreenState extends State<ProfileScreen> {
             hint: 'USUARIO',
             icon: Icons.alternate_email,
             controller: _usernameController,
+          ),
+          const SizedBox(height: 16),
+          DropdownButtonFormField<String>(
+            initialValue: municipalities.contains(_selectedMunicipality)
+                ? _selectedMunicipality
+                : null,
+            isExpanded: true,
+            decoration: const InputDecoration(
+              labelText: 'Municipio de origen',
+              prefixIcon: Icon(Icons.location_on),
+              border: OutlineInputBorder(),
+            ),
+            hint: const Text('Selecciona tu municipio'),
+            items: municipalities
+                .map(
+                  (municipality) => DropdownMenuItem(
+                    value: municipality,
+                    child: Text(municipality, overflow: TextOverflow.ellipsis),
+                  ),
+                )
+                .toList(),
+            onChanged: _isSaving
+                ? null
+                : (municipality) {
+                    setState(() => _selectedMunicipality = municipality);
+                  },
           ),
           const SizedBox(height: 16),
           TextFormField(

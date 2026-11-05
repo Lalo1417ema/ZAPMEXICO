@@ -2,7 +2,6 @@ import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
-import '../../../data/michoacan_municipalities.dart';
 import '../../providers/business_provider.dart';
 import '../../providers/catalog_provider.dart';
 
@@ -15,7 +14,6 @@ class AdminCatalogScreen extends StatefulWidget {
 
 class _AdminCatalogScreenState extends State<AdminCatalogScreen> {
   final _categoryController = TextEditingController();
-  String selectedMunicipality = michoacanMunicipalities.first;
   bool isLoading = false;
 
   @override
@@ -71,32 +69,10 @@ class _AdminCatalogScreenState extends State<AdminCatalogScreen> {
       padding: const EdgeInsets.all(16),
       children: [
         Text(
-          'Municipios disponibles',
-          style: Theme.of(context).textTheme.titleLarge,
+          'Los 113 municipios oficiales de Michoacán están disponibles, '
+          'aunque todavía no tengan fichas de negocios.',
+          style: Theme.of(context).textTheme.bodyLarge,
         ),
-        const SizedBox(height: 8),
-        DropdownButtonFormField<String>(
-          initialValue: selectedMunicipality,
-          decoration: const InputDecoration(
-            labelText: 'Municipio oficial de Michoacán',
-            border: OutlineInputBorder(),
-          ),
-          items: michoacanMunicipalities
-              .map((name) => DropdownMenuItem(value: name, child: Text(name)))
-              .toList(),
-          onChanged: (value) {
-            if (value != null) setState(() => selectedMunicipality = value);
-          },
-        ),
-        const SizedBox(height: 8),
-        FilledButton.icon(
-          onPressed: isLoading
-              ? null
-              : () => _run(() => catalog.addMunicipality(selectedMunicipality)),
-          icon: const Icon(Icons.add_location_alt),
-          label: const Text('Agregar municipio'),
-        ),
-        Text('${catalog.municipalities.length} municipios disponibles'),
         const Divider(height: 32),
         Text(
           'Categorías disponibles',

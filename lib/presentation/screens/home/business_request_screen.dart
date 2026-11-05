@@ -34,13 +34,12 @@ class _BusinessRequestScreenState extends State<BusinessRequestScreen> {
   final instagramController = TextEditingController();
   final websiteController = TextEditingController();
   final requestedCategoryController = TextEditingController();
-  final requestedMunicipalityController = TextEditingController();
 
   String selectedCategory = businessCategories.first;
   String selectedMunicipality = regionMunicipalities.first;
   bool requestNewCategory = false;
-  bool requestNewMunicipality = false;
   String listingType = 'business';
+  String submitterRole = 'owner';
   final ImagePicker imagePicker = ImagePicker();
   File? selectedLogoImage;
   final List<File> selectedGalleryImages = [];
@@ -116,7 +115,6 @@ class _BusinessRequestScreenState extends State<BusinessRequestScreen> {
     instagramController.dispose();
     websiteController.dispose();
     requestedCategoryController.dispose();
-    requestedMunicipalityController.dispose();
     super.dispose();
   }
 
@@ -155,9 +153,7 @@ class _BusinessRequestScreenState extends State<BusinessRequestScreen> {
     final catalogs = context.watch<CatalogProvider>();
     final categories = catalogs.categories;
     final municipalities = catalogs.municipalities;
-    final municipality = requestNewMunicipality
-        ? requestedMunicipalityController.text.trim()
-        : selectedMunicipality;
+    final municipality = selectedMunicipality;
     final category = requestNewCategory
         ? requestedCategoryController.text.trim()
         : selectedCategory;
@@ -192,7 +188,46 @@ class _BusinessRequestScreenState extends State<BusinessRequestScreen> {
                   ? null
                   : (value) {
                       if (value != null) {
-                        setState(() => listingType = value);
+                        setState(() {
+                          listingType = value;
+                          submitterRole = value == 'service'
+                              ? 'service_provider'
+                              : 'owner';
+                        });
+                      }
+                    },
+            ),
+            const SizedBox(height: 14),
+            DropdownButtonFormField<String>(
+              initialValue: submitterRole,
+              decoration: InputDecoration(
+                labelText: isService
+                    ? '¿Quién ofrece este servicio?'
+                    : '¿Cuál es tu relación con el negocio?',
+                border: const OutlineInputBorder(),
+              ),
+              items: isService
+                  ? const [
+                      DropdownMenuItem(
+                        value: 'service_provider',
+                        child: Text('Soy el prestador de servicios'),
+                      ),
+                    ]
+                  : const [
+                      DropdownMenuItem(
+                        value: 'owner',
+                        child: Text('Soy dueño del negocio'),
+                      ),
+                      DropdownMenuItem(
+                        value: 'employee',
+                        child: Text('Soy empleado del negocio'),
+                      ),
+                    ],
+              onChanged: isSubmitting
+                  ? null
+                  : (value) {
+                      if (value != null) {
+                        setState(() => submitterRole = value);
                       }
                     },
             ),
@@ -255,31 +290,12 @@ class _BusinessRequestScreenState extends State<BusinessRequestScreen> {
                     (city) => DropdownMenuItem(value: city, child: Text(city)),
                   )
                   .toList(),
-              onChanged: requestNewMunicipality
-                  ? null
-                  : (value) {
-                      if (value != null) {
-                        setState(() => selectedMunicipality = value);
-                      }
-                    },
+              onChanged: (value) {
+                if (value != null) {
+                  setState(() => selectedMunicipality = value);
+                }
+              },
             ),
-
-            CheckboxListTile(
-              contentPadding: EdgeInsets.zero,
-              value: requestNewMunicipality,
-              title: const Text('No encuentro el municipio'),
-              subtitle: const Text(
-                'Solicita agregar un municipio oficial de Michoacán.',
-              ),
-              onChanged: (value) =>
-                  setState(() => requestNewMunicipality = value ?? false),
-            ),
-            if (requestNewMunicipality)
-              CustomTextField(
-                hint: 'MUNICIPIO DESEADO',
-                controller: requestedMunicipalityController,
-                icon: Icons.edit_location_alt,
-              ),
 
             const SizedBox(height: 14),
 
@@ -511,13 +527,12 @@ class _BusinessRequestScreenState extends State<BusinessRequestScreen> {
                       setState(() => isSubmitting = true);
                       try {
                         final suggestions = <Map<String, String>>[
-                          if (requestNewMunicipality)
-                            {'type': 'municipality', 'value': municipality},
                           if (requestNewCategory)
                             {'type': 'category', 'value': category},
                         ];
                         await provider.submitBusinessRequest(
                           listingType: listingType,
+                          submitterRole: submitterRole,
                           name: nameController.text.trim(),
                           owner: ownerController.text.trim(),
                           email: emailController.text.trim(),

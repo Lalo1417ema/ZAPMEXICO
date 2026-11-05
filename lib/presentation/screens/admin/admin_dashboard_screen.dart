@@ -118,6 +118,15 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
               '${business['listingType'] == 'service' ? 'Servicio' : 'Negocio'}'
               ' • ${business['category']} • ${business['city']}',
             ),
+            if (business['submitterRole'] != null) ...[
+              const SizedBox(height: 4),
+              Text(switch (business['submitterRole']) {
+                'owner' => 'Solicitante: dueño del negocio',
+                'employee' => 'Solicitante: empleado del negocio',
+                'service_provider' => 'Solicitante: prestador del servicio',
+                _ => 'Solicitante: ${business['submitterRole']}',
+              }),
+            ],
             const SizedBox(height: 6),
             Container(
               padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),

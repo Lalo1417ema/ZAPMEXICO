@@ -273,6 +273,7 @@ void main() {
     () async {
       final provider = BusinessProvider();
       await provider.submitBusinessRequest(
+        submitterRole: 'employee',
         name: 'Negocio enviado por usuario',
         owner: '',
         email: '',
@@ -300,6 +301,7 @@ void main() {
       );
       expect(business['logoUrl'], businessCategoryImageAsset('Restaurantes'));
       expect(business['imageIsIllustrative'], isTrue);
+      expect(business['submitterRole'], 'employee');
     },
   );
 

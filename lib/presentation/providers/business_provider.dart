@@ -131,6 +131,7 @@ class BusinessProvider extends ChangeNotifier {
 
   Future<String> submitBusinessRequest({
     String listingType = 'business',
+    String? submitterRole,
     required String name,
     required String owner,
     required String email,
@@ -151,6 +152,17 @@ class BusinessProvider extends ChangeNotifier {
   }) async {
     if (listingType != 'business' && listingType != 'service') {
       throw ArgumentError('El tipo de publicación no es válido.');
+    }
+    final validSubmitterRoles = listingType == 'service'
+        ? {'service_provider'}
+        : {'owner', 'employee'};
+    final normalizedSubmitterRole =
+        submitterRole ??
+        (listingType == 'service' ? 'service_provider' : 'owner');
+    if (!validSubmitterRoles.contains(normalizedSubmitterRole)) {
+      throw ArgumentError(
+        'Indica si eres dueño, empleado o prestador del servicio.',
+      );
     }
     final firebaseConfigured = Firebase.apps.isNotEmpty;
     final requiredFields = {
@@ -201,6 +213,7 @@ class BusinessProvider extends ChangeNotifier {
     final business = <String, dynamic>{
       'id': businessId,
       'listingType': listingType,
+      'submitterRole': normalizedSubmitterRole,
       'name': name.trim(),
       'owner': owner.trim(),
       'email': email.trim(),

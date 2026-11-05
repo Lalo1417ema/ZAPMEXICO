@@ -44,6 +44,14 @@ class _CustomDrawerState extends State<CustomDrawer> {
     }
   }
 
+  void _openProfile() {
+    if (context.read<AuthProvider>().isVisitor) {
+      showRegistrationRequiredDialog(context);
+      return;
+    }
+    Navigator.pushNamed(context, AppRoutes.profile);
+  }
+
   @override
   Widget build(BuildContext context) {
     final auth = Provider.of<AuthProvider>(context);
@@ -58,12 +66,18 @@ class _CustomDrawerState extends State<CustomDrawer> {
           children: [
             const SizedBox(height: 20),
 
-            CircleAvatar(
-              radius: 45,
-              backgroundImage: photoUrl.isEmpty ? null : NetworkImage(photoUrl),
-              child: photoUrl.isEmpty
-                  ? const Icon(Icons.person, size: 50)
-                  : null,
+            InkWell(
+              onTap: _openProfile,
+              customBorder: const CircleBorder(),
+              child: CircleAvatar(
+                radius: 45,
+                backgroundImage: photoUrl.isEmpty
+                    ? null
+                    : NetworkImage(photoUrl),
+                child: photoUrl.isEmpty
+                    ? const Icon(Icons.person, size: 50)
+                    : null,
+              ),
             ),
 
             const SizedBox(height: 16),

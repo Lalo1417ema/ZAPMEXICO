@@ -292,6 +292,7 @@ class AuthProvider extends ChangeNotifier {
   Future<void> updateProfile({
     required String name,
     required String username,
+    String? municipality,
     File? profileImage,
   }) async {
     final firebaseUser = _auth.currentUser;
@@ -329,6 +330,8 @@ class AuthProvider extends ChangeNotifier {
       'name': normalizedName,
       'username': normalizedUsername,
       'email': firebaseUser.email ?? '',
+      if (municipality != null && municipality.trim().isNotEmpty)
+        'city': municipality.trim(),
       'photoUrl': photoUrl,
       'updatedAt': FieldValue.serverTimestamp(),
     }, SetOptions(merge: true));

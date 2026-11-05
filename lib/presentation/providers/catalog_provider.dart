@@ -7,7 +7,10 @@ import '../../data/michoacan_municipalities.dart';
 
 class CatalogProvider extends ChangeNotifier {
   FirebaseFirestore get _firestore => FirebaseFirestore.instance;
-  final Set<String> _municipalities = {...regionMunicipalities};
+  final Set<String> _municipalities = {
+    ...regionMunicipalities,
+    ...michoacanMunicipalities,
+  };
   final Set<String> _categories = {...businessCategories};
   final List<Map<String, dynamic>> requests = [];
   bool isLoading = false;
@@ -27,6 +30,7 @@ class CatalogProvider extends ChangeNotifier {
       _municipalities
         ..clear()
         ..addAll(regionMunicipalities)
+        ..addAll(michoacanMunicipalities)
         ..addAll(
           snapshots[0].docs
               .where((document) => document.data()['active'] == true)
